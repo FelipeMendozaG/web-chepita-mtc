@@ -1,0 +1,28 @@
+# ==============================================================================
+# Skaffold Configuration - Web Chepita MTC (Cloud Run Rendering)
+# Define la asignación de manifiestos Knative por entorno (dev, qa, prod)
+# ==============================================================================
+
+apiVersion: skaffold/v4beta7
+kind: Config
+metadata:
+  name: chepita-web-frontend
+
+profiles:
+  - name: dev
+    manifests:
+      rawYaml:
+        - service-dev.yaml
+
+  - name: qa
+    manifests:
+      rawYaml:
+        - service-qa.yaml
+
+  - name: prod
+    manifests:
+      rawYaml:
+        - service-prod.yaml
+
+deploy:
+  cloudrun: {}

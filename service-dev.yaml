@@ -1,0 +1,41 @@
+# ==============================================================================
+# Google Cloud Run Knative Service Manifest - Entorno DEV
+# ==============================================================================
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: chepita-web-frontend-dev
+  labels:
+    cloud.googleapis.com/location: southamerica-east1
+    app: chepita-web-frontend
+    env: dev
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "2"
+        run.googleapis.com/client-name: "cloud-deploy"
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+        - name: chepita-web-frontend
+          image: chepita-web-frontend
+          ports:
+            - name: http1
+              containerPort: 8080
+          resources:
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+          env:
+            - name: NODE_ENV
+              value: "development"
+            - name: NEXT_PUBLIC_API_URL
+              value: "https://project-d5c1b1cb-efd2-47ae-ad8.uc.r.appspot.com/api/v1"
+            - name: NEXT_PUBLIC_API_BASE
+              value: "https://project-d5c1b1cb-efd2-47ae-ad8.uc.r.appspot.com"
+            - name: PORT
+              value: "8080"

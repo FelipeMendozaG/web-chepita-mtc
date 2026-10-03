@@ -1,0 +1,140 @@
+# ==============================================================================
+# Google Cloud Build Pipeline - Web Chepita MTC (Frontend)
+# CI/CD: Test & Build -> SAST (SonarCloud) -> Artifact Registry -> Cloud Deploy
+# ==============================================================================
+
+substitutions:
+  _AR_LOCATION: 'southamerica-east1'
+  _AR_REPOSITORY: 'chepita-web-repo'
+  _IMAGE_NAME: 'chepita-web-frontend'
+  _PIPELINE_NAME: 'chepita-web-pipeline'
+  _DEPLOY_REGION: 'southamerica-east1'
+  _SONAR_HOST_URL: 'https://sonarcloud.io'
+
+steps:
+  # ----------------------------------------------------------------------------
+  # Paso 1: Instalación de Dependencias, Pruebas Unitarias y Build (T_build)
+  # ----------------------------------------------------------------------------
+  - name: 'node:20'
+    id: 'test-and-build'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        T_BUILD_START=$$(date +%s)
+        echo "=========================================================="
+        echo ">> [CI - T_BUILD] INICIO: Dependencias, Pruebas y Build"
+        echo "=========================================================="
+        npm ci
+        echo ">> Ejecutando pruebas unitarias con generación de cobertura LCOV..."
+        npm run test:coverage
+        echo ">> Compilando artefactos de producción estática de Next.js..."
+        npm run build
+        T_BUILD_END=$$(date +%s)
+        T_BUILD_DIFF=$$((T_BUILD_END - T_BUILD_START))
+        echo "=========================================================="
+        echo ">> [CI - T_BUILD] COMPLETADO en $${T_BUILD_DIFF}s"
+        echo "=========================================================="
+
+  # ----------------------------------------------------------------------------
+  # Paso 2: Análisis Estático de Seguridad (SAST) y Quality Gate (T_SAST)
+  # ----------------------------------------------------------------------------
+  - name: 'sonarsource/sonar-scanner-cli:latest'
+    id: 'sonarcloud-sast'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        T_SAST_START=$$(date +%s)
+        echo "=========================================================="
+        echo ">> [CI - T_SAST] INICIO: Escaneo SAST en SonarCloud"
+        echo "=========================================================="
+        sonar-scanner \
+          -Dsonar.host.url=${_SONAR_HOST_URL} \
+          -Dsonar.token=$$SONAR_TOKEN
+        T_SAST_END=$$(date +%s)
+        T_SAST_DIFF=$$((T_SAST_END - T_SAST_START))
+        echo "=========================================================="
+        echo ">> [CI - T_SAST] COMPLETADO en $${T_SAST_DIFF}s"
+        echo "=========================================================="
+    secretEnv: ['SONAR_TOKEN']
+
+  # ----------------------------------------------------------------------------
+  # Paso 3: Construcción de Imagen Docker con Servidor Nginx (T_docker)
+  # ----------------------------------------------------------------------------
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'docker-build'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        T_DOCKER_START=$$(date +%s)
+        echo "=========================================================="
+        echo ">> [CI - T_REGISTRY] INICIO: Construcción de imagen Docker"
+        echo "=========================================================="
+        docker build \
+          -t ${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA \
+          -t ${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:latest \
+          .
+        T_DOCKER_END=$$(date +%s)
+        T_DOCKER_DIFF=$$((T_DOCKER_END - T_DOCKER_START))
+        echo ">> [CI - T_REGISTRY] Imagen construida en $${T_DOCKER_DIFF}s"
+
+  # ----------------------------------------------------------------------------
+  # Paso 4: Publicación de Imagen en Google Artifact Registry (T_push)
+  # ----------------------------------------------------------------------------
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'docker-push'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        T_PUSH_START=$$(date +%s)
+        echo ">> [CI - T_REGISTRY] Publicando imagen en Artifact Registry..."
+        docker push ${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
+        docker push ${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:latest
+        T_PUSH_END=$$(date +%s)
+        T_PUSH_DIFF=$$((T_PUSH_END - T_PUSH_START))
+        echo "=========================================================="
+        echo ">> [CI - T_REGISTRY] PUBLICACIÓN COMPLETADA en $${T_PUSH_DIFF}s"
+        echo "=========================================================="
+
+  # ----------------------------------------------------------------------------
+  # Paso 5: Creación de Release en Google Cloud Deploy (T_CD)
+  # ----------------------------------------------------------------------------
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'create-cd-release'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        T_CD_START=$$(date +%s)
+        echo "=========================================================="
+        echo ">> [CD - T_CD] INICIO: Disparando Release en Cloud Deploy"
+        echo "=========================================================="
+        gcloud deploy releases create "release-$SHORT_SHA" \
+          --project=$PROJECT_ID \
+          --delivery-pipeline=${_PIPELINE_NAME} \
+          --region=${_DEPLOY_REGION} \
+          --images=${_IMAGE_NAME}=${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
+        T_CD_END=$$(date +%s)
+        T_CD_DIFF=$$((T_CD_END - T_CD_START))
+        echo "=========================================================="
+        echo ">> [CD - T_CD] RELEASE REGISTRADO en $${T_CD_DIFF}s"
+        echo "=========================================================="
+
+# Enlace al secreto SONAR_TOKEN provisionado en Secret Manager
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/SONAR_TOKEN/versions/latest
+      env: 'SONAR_TOKEN'
+
+# Imágenes finales generadas por el pipeline
+images:
+  - '${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA'
+  - '${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '1200s'

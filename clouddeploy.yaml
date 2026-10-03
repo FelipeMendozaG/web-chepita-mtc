@@ -1,0 +1,61 @@
+# ==============================================================================
+# Google Cloud Deploy Delivery Pipeline & Multi-Environment Targets
+# Flujo de Entrega Continua: dev-env -> qa-env -> prod-env (con aprobación manual)
+# ==============================================================================
+
+apiVersion: deploy.cloud.google.com/v1
+kind: DeliveryPipeline
+metadata:
+  name: chepita-web-pipeline
+  description: "Pipeline de Despliegue Continuo DevSecOps para Web Chepita MTC"
+serialPipeline:
+  stages:
+    - targetId: dev-env
+      profiles:
+        - dev
+    - targetId: qa-env
+      profiles:
+        - qa
+    - targetId: prod-env
+      profiles:
+        - prod
+
+---
+
+# ------------------------------------------------------------------------------
+# Target 1: Entorno de Desarrollo (Dev)
+# ------------------------------------------------------------------------------
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: dev-env
+  description: "Entorno de Desarrollo en Google Cloud Run"
+run:
+  location: projects/project-d5c1b1cb-efd2-47ae-ad8/locations/southamerica-east1
+
+---
+
+# ------------------------------------------------------------------------------
+# Target 2: Entorno de Aseguramiento de Calidad (QA / Staging)
+# ------------------------------------------------------------------------------
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: qa-env
+  description: "Entorno de QA / Pruebas en Google Cloud Run"
+run:
+  location: projects/project-d5c1b1cb-efd2-47ae-ad8/locations/southamerica-east1
+
+---
+
+# ------------------------------------------------------------------------------
+# Target 3: Entorno de Producción (Prod) - Control DevSecOps con Aprobación Manual
+# ------------------------------------------------------------------------------
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: prod-env
+  description: "Entorno de Producción Oficial en Google Cloud Run"
+requireApproval: true
+run:
+  location: projects/project-d5c1b1cb-efd2-47ae-ad8/locations/southamerica-east1
