@@ -22,6 +22,7 @@ steps:
     args:
       - '-c'
       - |
+        set -e
         T_BUILD_START=$$(date +%s)
         echo "=========================================================="
         echo ">> [CI - T_BUILD] INICIO: Dependencias, Pruebas y Build"
@@ -31,6 +32,7 @@ steps:
         npm run test:coverage
         echo ">> Compilando artefactos de producción estática de Next.js..."
         npm run build
+        chmod -R 777 .
         T_BUILD_END=$$(date +%s)
         T_BUILD_DIFF=$$((T_BUILD_END - T_BUILD_START))
         echo "=========================================================="
@@ -46,13 +48,15 @@ steps:
     args:
       - '-c'
       - |
+        set -e
         T_SAST_START=$$(date +%s)
         echo "=========================================================="
         echo ">> [CI - T_SAST] INICIO: Escaneo SAST en SonarCloud"
         echo "=========================================================="
         sonar-scanner \
           -Dsonar.host.url=${_SONAR_HOST_URL} \
-          -Dsonar.token=$$SONAR_TOKEN
+          -Dsonar.token=$$SONAR_TOKEN \
+          -Dsonar.working.directory=/tmp/scannerwork
         T_SAST_END=$$(date +%s)
         T_SAST_DIFF=$$((T_SAST_END - T_SAST_START))
         echo "=========================================================="
@@ -69,6 +73,7 @@ steps:
     args:
       - '-c'
       - |
+        set -e
         T_DOCKER_START=$$(date +%s)
         echo "=========================================================="
         echo ">> [CI - T_REGISTRY] INICIO: Construcción de imagen Docker"
@@ -90,6 +95,7 @@ steps:
     args:
       - '-c'
       - |
+        set -e
         T_PUSH_START=$$(date +%s)
         echo ">> [CI - T_REGISTRY] Publicando imagen en Artifact Registry..."
         docker push ${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:${_SHORT_SHA}
@@ -109,6 +115,7 @@ steps:
     args:
       - '-c'
       - |
+        set -e
         T_CD_START=$$(date +%s)
         echo "=========================================================="
         echo ">> [CD - T_CD] INICIO: Disparando Release en Cloud Deploy"
