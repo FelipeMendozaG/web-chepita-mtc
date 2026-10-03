@@ -1,0 +1,36 @@
+# Cursor AI context ignore file
+
+# Next.js build and cache
+.next/
+out/
+build/
+dist/
+.next/cache/
+
+# Dependencies
+node_modules/
+
+# Package locks
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lockb
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files with sensitive credentials
+.env*.local
+.env.production
+.env.development
+
+# Test coverage
+coverage/
+
+# Version control & OS artifacts
+.git/
+.DS_Store
+Thumbs.db

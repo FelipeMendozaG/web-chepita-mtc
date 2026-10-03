@@ -1,0 +1,32 @@
+# Cursor Rules - Web Chepita MTC
+
+Actúa como un desarrollador Full-Stack Senior especializado en Next.js (App Router), Tailwind CSS y React 19.
+
+## Tech Stack & Architecture
+- **Framework:** Next.js 16.3.6 (App Router en `src/app/`) con React 19 y React Compiler habilitado (`next.config.mjs`).
+- **Styling:** Tailwind CSS v4 (`@import "tailwindcss"` en `src/app/globals.css`), `clsx`, `tailwind-merge` vía helper `cn(...)` en `src/lib/utils.js`.
+- **UI & Motion:** `lucide-react`, `framer-motion`, `canvas-confetti`.
+- **State & Data:** Store de autenticación con Zustand persistente (`src/lib/store.js`), cliente Axios (`src/lib/api.js`) para consumir la API REST MTC en Google Cloud.
+- **Rutas y Alias:** Configuración en `jsconfig.json` con alias `@/*` apuntando a `./src/*`.
+- **Deployment:** Google Cloud App Engine (`app.yaml`, runtime Node.js 22).
+
+## Directory Structure Standards
+- `src/app/`: Páginas y layouts con App Router.
+- `src/components/`: Componentes UI reutilizables (Navbar, Footer, Skeleton, EmptyState, etc.).
+- `src/lib/`: Capa de servicios (`api.js`), store (`store.js`), datos offline (`mockData.js`) y utilidades (`utils.js`).
+- `docs/`: Especificaciones OpenAPI y Postman de la API.
+
+## Component & Rendering Guidelines
+1. **Server Components por defecto:** Todo componente en `src/app/` es RSC por defecto. No agregar `'use client'` salvo que sea estrictamente interactivo (formularios con estado, temporizadores, animaciones interactivas).
+2. **Minimizar `'use client'`:** Trasladar la directiva `'use client'` a los componentes hoja en `src/components/`, manteniendo los layouts y páginas contenedoras en el servidor.
+3. **Optimización Next.js:** Usar `next/link` (`<Link>`), `next/image` (`<Image>`) y metadata declarativa de Next.js en lugar de etiquetas HTML estándar.
+4. **Manejo de Errores:** Manejar estados de carga (`Skeleton`), vacíos (`EmptyState`) y normalizar errores con `getErrorMessage(error)` de `src/lib/api.js`.
+
+## Critical Guardrails
+- **No exponer credenciales:** Usar `NEXT_PUBLIC_` únicamente para variables que deban estar disponibles en el navegador (`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_API_BASE`).
+- **No añadir paquetes npm:** No instalar nuevas dependencias sin autorización previa del usuario.
+- **Tailwind v4:** No crear configuraciones obsoletas de Tailwind v3 (`tailwind.config.js`).
+- **Comandos frecuentes:**
+  - Desarrollo: `npm run dev`
+  - Compilación: `npm run build` o `npm run gcp-build`
+  - Linter: `npm run lint`
