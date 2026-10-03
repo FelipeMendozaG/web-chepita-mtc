@@ -10,6 +10,8 @@ substitutions:
   _PIPELINE_NAME: 'chepita-web-pipeline'
   _DEPLOY_REGION: 'southamerica-east1'
   _SONAR_HOST_URL: 'https://sonarcloud.io'
+  SHORT_SHA: 'manual'
+  COMMIT_SHA: 'manual'
 
 steps:
   # ----------------------------------------------------------------------------
