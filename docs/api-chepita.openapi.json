@@ -1,0 +1,2780 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "API Chepita MTC - Examen de Reglas de Transito",
+    "version": "1.0.0",
+    "description": "API del simulacro de examen de reglas de transito (preguntas, intentos, foro y recomendaciones).\nEspecificacion generada desde `src/routes/v1/*.js` (importable en Postman y Bruno).\n\n### Envelope de respuesta\n- `success`   : `{ \"status\": \"success\",   \"message\": \"Proceso realizado con exito\", \"data\": <payload> }`\n- `error`     : `{ \"status\": \"error\",     \"message\": \"Ocurrio un problema\",          \"data\": <codigo o mensaje> }`\n- `exception` : `{ \"status\": \"exception\", \"message\": \"Ocurrio un error en el servidor\", \"data\": \"<mensaje>\" }`\n- `ValidAuth` : `{ \"error\": \"ERROR_NO_EXISTS_TOKEN\" | \"ERROR_NO_VALID_TOKEN\" }` (401, sin envelope)\n\n### Notas\n- Todos los endpoints excepto `/v1/auth` y `/v1/auth/login` requieren `Bearer token`.\n- Los routers `src/routes/v1/sunat.js` y `src/routes/v1/user.js` no exponen endpoints.\n- Los archivos subidos se sirven en `http://localhost:4005/uploads/<archivo>`.",
+    "contact": {
+      "name": "Felipe Mendoza",
+      "email": "contacto@businessitsolutions.pe"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4005/api",
+      "description": "Servidor local"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Registro y login (endpoints publicos)"
+    },
+    {
+      "name": "Questions",
+      "description": "Banco de preguntas y generacion de simulacros"
+    },
+    {
+      "name": "Attempts",
+      "description": "Historial y detalle de los intentos del usuario"
+    },
+    {
+      "name": "Discussions",
+      "description": "Foro: crear tema, responder, cerrar y reportar"
+    },
+    {
+      "name": "Recommendations",
+      "description": "Recomendaciones de conduccion activas"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Token devuelto por `POST /v1/auth/login` o `POST /v1/auth`. Header: `Authorization: Bearer <token>` (expira en 3h)"
+      }
+    },
+    "schemas": {
+      "AuthError": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "enum": [
+              "ERROR_NO_EXISTS_TOKEN",
+              "ERROR_NO_VALID_TOKEN",
+              "ERROR_NO_INICIO_SESION",
+              "ERROR_MIDD_VALIDCOMPANY"
+            ],
+            "example": "ERROR_NO_EXISTS_TOKEN"
+          }
+        }
+      },
+      "ExceptionResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "exception"
+            ],
+            "example": "exception"
+          },
+          "message": {
+            "type": "string",
+            "example": "Ocurrio un error en el servidor"
+          },
+          "data": {
+            "type": "string",
+            "nullable": true,
+            "example": "ECONNREFUSED 127.0.0.1:3306"
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "password"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "example": "Juan Perez"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 150,
+            "example": "juan@chepita.pe"
+          },
+          "password": {
+            "type": "string",
+            "example": "Chepita2026",
+            "description": "Se hashea con bcrypt (10 rounds)"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "juan@chepita.pe"
+          },
+          "password": {
+            "type": "string",
+            "example": "Chepita2026"
+          }
+        }
+      },
+      "RegisterData": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOjIsImVtYWlsIjoianVhbkBjaGVwaXRhLnBlIiwibmFtZSI6Ikp1YW4gUGVyZXoiLCJpYXQiOjE3Njc5MDAwMDAsImV4cCI6MTc2NzkxMDgwMH0.s3cr3t-s1gn4tur3",
+            "description": "JWT valido por 3h"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        }
+      },
+      "LoginData": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserWithPassword"
+          },
+          "token": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOjIsImVtYWlsIjoianVhbkBjaGVwaXRhLnBlIiwibmFtZSI6Ikp1YW4gUGVyZXoiLCJpYXQiOjE3Njc5MDAwMDAsImV4cCI6MTc2NzkxMDgwMH0.s3cr3t-s1gn4tur3",
+            "description": "JWT valido por 3h"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 2
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true,
+            "example": "Juan Perez"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 150,
+            "nullable": true,
+            "example": "juan@chepita.pe"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-01-15T10:00:00.000Z"
+          }
+        }
+      },
+      "UserWithPassword": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/User"
+          },
+          {
+            "type": "object",
+            "description": "En el login el hash de la contrasena SI se incluye en la respuesta",
+            "properties": {
+              "password": {
+                "type": "string",
+                "example": "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+              }
+            }
+          }
+        ]
+      },
+      "QuestionOption": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 10
+          },
+          "option_number": {
+            "type": "integer",
+            "example": 1
+          },
+          "option_text": {
+            "type": "string",
+            "example": "PARE: detencion total obligatoria"
+          },
+          "is_correct": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "Question": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "number": {
+            "type": "integer",
+            "example": 12
+          },
+          "subject": {
+            "type": "string",
+            "example": "Educacion Vial"
+          },
+          "topic": {
+            "type": "string",
+            "example": "Senales de transito"
+          },
+          "license_category": {
+            "type": "string",
+            "example": "A-I"
+          },
+          "question": {
+            "type": "string",
+            "example": "¿Que indica una senal octogonal de color rojo?"
+          },
+          "image_url": {
+            "type": "string",
+            "nullable": true,
+            "example": "/uploads/1767900000000-a1b2c3d4e5f6a7b8.png"
+          },
+          "explanation": {
+            "type": "string",
+            "nullable": true,
+            "example": "La senal octogonal roja significa PARE (detencion total)."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-01-15T10:00:00.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-01-15T10:00:00.000Z"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionOption"
+            }
+          }
+        }
+      },
+      "PaginatedQuestions": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "example": 1250
+          },
+          "page": {
+            "type": "integer",
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "example": 10
+          },
+          "totalPages": {
+            "type": "integer",
+            "example": 125
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Question"
+            }
+          }
+        }
+      },
+      "SimulacrumData": {
+        "type": "object",
+        "properties": {
+          "attempt_id": {
+            "type": "integer",
+            "example": 5,
+            "description": "Attempt creado automaticamente"
+          },
+          "questions": {
+            "type": "array",
+            "maxItems": 40,
+            "description": "Hasta 40 preguntas aleatorias sin repetir",
+            "items": {
+              "$ref": "#/components/schemas/Question"
+            }
+          }
+        }
+      },
+      "SaveAttemptRequest": {
+        "type": "object",
+        "required": [
+          "answers"
+        ],
+        "properties": {
+          "answers": {
+            "type": "array",
+            "minItems": 1,
+            "description": "No puede ser un array vacio (retorna 400)",
+            "items": {
+              "type": "object",
+              "required": [
+                "question_id",
+                "selected_option"
+              ],
+              "properties": {
+                "question_id": {
+                  "type": "integer",
+                  "example": 1
+                },
+                "selected_option": {
+                  "type": "integer",
+                  "example": 10,
+                  "description": "id de question_options (no el option_number)"
+                }
+              }
+            }
+          }
+        }
+      },
+      "SaveAttemptResult": {
+        "type": "object",
+        "properties": {
+          "attempt_id": {
+            "type": "integer",
+            "example": 5
+          },
+          "correct_answers": {
+            "type": "integer",
+            "example": 36
+          },
+          "wrong_answers": {
+            "type": "integer",
+            "example": 4
+          },
+          "score": {
+            "type": "string",
+            "example": "90.00"
+          },
+          "approved": {
+            "type": "boolean",
+            "example": true,
+            "description": "score >= 87.5"
+          }
+        }
+      },
+      "Attempt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 5
+          },
+          "user_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": 2
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-01-15T10:10:00.000Z"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-01-15T10:45:00.000Z"
+          },
+          "total_questions": {
+            "type": "integer",
+            "example": 40
+          },
+          "correct_answers": {
+            "type": "integer",
+            "example": 36
+          },
+          "wrong_answers": {
+            "type": "integer",
+            "example": 4
+          },
+          "score": {
+            "type": "string",
+            "nullable": true,
+            "example": "90.00",
+            "description": "DECIMAL(5,2) que Sequelize serializa como string"
+          },
+          "approved": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "AttemptWithAnswers": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Attempt"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "answers": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AttemptAnswer"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "AttemptDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Attempt"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "answers": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AttemptAnswerDetail"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "AttemptAnswer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 101
+          },
+          "attempt_id": {
+            "type": "integer",
+            "example": 5
+          },
+          "question_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "selected_option": {
+            "type": "integer",
+            "example": 10,
+            "description": "id de question_options seleccionada"
+          },
+          "is_correct": {
+            "type": "boolean",
+            "example": true
+          },
+          "option": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/QuestionOption"
+              }
+            ],
+            "description": "Opcion seleccionada (GET /attempts)"
+          }
+        }
+      },
+      "AttemptAnswerDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AttemptAnswer"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "object",
+                "description": "Pregunta con todas sus opciones (solo en GET /attempts/:id)",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "question": {
+                    "type": "string",
+                    "example": "¿Que indica una senal octogonal de color rojo?"
+                  },
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/QuestionOption"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Discussion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 3
+          },
+          "user_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": 2
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "example": "Duda sobre prioridad en rotonda"
+          },
+          "content": {
+            "type": "string",
+            "example": "¿Quien tiene prioridad al ingresar a una rotonda?"
+          },
+          "image_url": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "example": "/uploads/1767900000001-ffeeddccbbaa9988.jpg"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "example": "open"
+          },
+          "closed_by_user_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": null
+          },
+          "closed_reason": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "example": null
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-01-15T10:05:00.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-01-15T10:05:00.000Z"
+          }
+        }
+      },
+      "DiscussionWithAuthor": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Discussion"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "author": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 2
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Juan Perez"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "DiscussionRequest": {
+        "type": "object",
+        "required": [
+          "title",
+          "content"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "example": "Duda sobre prioridad en rotonda"
+          },
+          "content": {
+            "type": "string",
+            "example": "¿Quien tiene prioridad al ingresar a una rotonda?"
+          },
+          "image": {
+            "type": "string",
+            "format": "binary",
+            "description": "Opcional, solo image/* (multer single(\"image\"))"
+          }
+        }
+      },
+      "DiscussionReply": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 7
+          },
+          "discussion_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": 3
+          },
+          "user_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": 2
+          },
+          "reply": {
+            "type": "string",
+            "example": "Tiene prioridad quien ya circula dentro de la rotonda."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-01-15T11:00:00.000Z"
+          }
+        }
+      },
+      "DiscussionReplyRequest": {
+        "type": "object",
+        "required": [
+          "reply"
+        ],
+        "properties": {
+          "reply": {
+            "type": "string",
+            "example": "Tiene prioridad quien ya circula dentro de la rotonda."
+          }
+        }
+      },
+      "DiscussionReport": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 2
+          },
+          "discussion_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": 3
+          },
+          "reported_by_user_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": 2
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 255,
+            "example": "Contenido ofensivo"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "reviewed",
+              "dismissed"
+            ],
+            "example": "pending"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-01-15T12:30:00.000Z"
+          }
+        }
+      },
+      "DiscussionReportRequest": {
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 255,
+            "example": "Contenido ofensivo"
+          }
+        }
+      },
+      "CloseDiscussionRequest": {
+        "type": "object",
+        "properties": {
+          "closed_reason": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "example": "Tema resuelto por el moderador"
+          }
+        }
+      },
+      "DrivingRecommendation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 150,
+            "example": "Manten la distancia de seguridad"
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true,
+            "example": "Seguridad Vial"
+          },
+          "content": {
+            "type": "string",
+            "example": "Conserva al menos 3 segundos de distancia con el vehiculo de adelante."
+          },
+          "image_url": {
+            "type": "string",
+            "maxLength": 255,
+            "nullable": true,
+            "example": "/uploads/1767900000002-rec-seguridad.jpg"
+          },
+          "is_active": {
+            "type": "boolean",
+            "example": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": "2026-01-15T09:00:00.000Z"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/v1/auth": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Registrar usuario",
+        "description": "Crea un usuario en `users` y devuelve un JWT. No requiere token. No valida campos vacios: un body incompleto termina en 500.",
+        "operationId": "registerUser",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuario creado. El `user` de la respuesta no incluye `password` ni `created_at`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ],
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Proceso realizado con exito"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/RegisterData"
+                    }
+                  }
+                },
+                "examples": {
+                  "registrado": {
+                    "summary": "Usuario registrado",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": {
+                        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOjIsImVtYWlsIjoianVhbkBjaGVwaXRhLnBlIiwibmFtZSI6Ikp1YW4gUGVyZXoiLCJpYXQiOjE3Njc5MDAwMDAsImV4cCI6MTc2NzkxMDgwMH0.s3cr3t-s1gn4tur3",
+                        "user": {
+                          "id": 2,
+                          "name": "Juan Perez",
+                          "email": "juan@chepita.pe"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor (envelope exception)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                },
+                "examples": {
+                  "errorBaseDeDatos": {
+                    "summary": "Error de conexion a MySQL",
+                    "value": {
+                      "status": "exception",
+                      "message": "Ocurrio un error en el servidor",
+                      "data": "ECONNREFUSED 127.0.0.1:3306"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login",
+        "description": "Valida credenciales con bcrypt y devuelve el JWT (3h). No requiere token. El `user` de la respuesta SI incluye el hash de `password`.",
+        "operationId": "login",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Credenciales correctas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ],
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Proceso realizado con exito"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/LoginData"
+                    }
+                  }
+                },
+                "examples": {
+                  "loginOk": {
+                    "summary": "Login correcto",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": {
+                        "user": {
+                          "id": 2,
+                          "name": "Juan Perez",
+                          "email": "juan@chepita.pe",
+                          "password": "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy",
+                          "created_at": "2026-01-15T10:00:00.000Z"
+                        },
+                        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOjIsImVtYWlsIjoianVhbkBjaGVwaXRhLnBlIiwibmFtZSI6Ikp1YW4gUGVyZXoiLCJpYXQiOjE3Njc5MDAwMDAsImV4cCI6MTc2NzkxMDgwMH0.s3cr3t-s1gn4tur3"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Contrasena incorrecta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ],
+                      "example": "error"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Ocurrio un problema"
+                    },
+                    "data": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "INVALID_PASSWORD",
+                      "description": "Codigo o mensaje de error"
+                    }
+                  }
+                },
+                "examples": {
+                  "dato": {
+                    "summary": "Contrasena invalida",
+                    "value": {
+                      "status": "error",
+                      "message": "Ocurrio un problema",
+                      "data": "INVALID_PASSWORD"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El email no existe",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ],
+                      "example": "error"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Ocurrio un problema"
+                    },
+                    "data": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "USER_NOT_FOUND",
+                      "description": "Codigo o mensaje de error"
+                    }
+                  }
+                },
+                "examples": {
+                  "dato": {
+                    "summary": "Usuario no encontrado",
+                    "value": {
+                      "status": "error",
+                      "message": "Ocurrio un problema",
+                      "data": "USER_NOT_FOUND"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor (envelope exception)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                },
+                "examples": {
+                  "errorBaseDeDatos": {
+                    "summary": "Error de conexion a MySQL",
+                    "value": {
+                      "status": "exception",
+                      "message": "Ocurrio un error en el servidor",
+                      "data": "ECONNREFUSED 127.0.0.1:3306"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/questions": {
+      "get": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "Listar preguntas (paginado)",
+        "description": "Devuelve el banco de preguntas con sus opciones (`question_id` excluido) ordenado por `id ASC`. Requiere token.",
+        "operationId": "getQuestions",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Numero de pagina (default 1)",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Registros por pagina (default 10)",
+            "schema": {
+              "type": "integer",
+              "example": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listado paginado de preguntas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ],
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Proceso realizado con exito"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PaginatedQuestions"
+                    }
+                  }
+                },
+                "examples": {
+                  "listado": {
+                    "summary": "Primera pagina con 10 preguntas",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": {
+                        "total": 1250,
+                        "page": 1,
+                        "limit": 10,
+                        "totalPages": 125,
+                        "data": [
+                          {
+                            "id": 1,
+                            "number": 12,
+                            "subject": "Educacion Vial",
+                            "topic": "Senales de transito",
+                            "license_category": "A-I",
+                            "question": "¿Que indica una senal octogonal de color rojo?",
+                            "image_url": "/uploads/1767900000000-a1b2c3d4e5f6a7b8.png",
+                            "explanation": "La senal octogonal roja significa PARE (detencion total).",
+                            "created_at": "2026-01-15T10:00:00.000Z",
+                            "updated_at": "2026-01-15T10:00:00.000Z",
+                            "options": [
+                              {
+                                "id": 10,
+                                "option_number": 1,
+                                "option_text": "PARE: detencion total obligatoria",
+                                "is_correct": true
+                              },
+                              {
+                                "id": 11,
+                                "option_number": 2,
+                                "option_text": "Ceda el paso",
+                                "is_correct": false
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "bancoVacio": {
+                    "summary": "Banco de preguntas vacio",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": {
+                        "total": 0,
+                        "page": 1,
+                        "limit": 10,
+                        "totalPages": 0,
+                        "data": []
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente, invalido o expirado (middleware ValidAuth)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                },
+                "examples": {
+                  "sinToken": {
+                    "summary": "Header Authorization ausente",
+                    "value": {
+                      "error": "ERROR_NO_EXISTS_TOKEN"
+                    }
+                  },
+                  "tokenInvalido": {
+                    "summary": "Token invalido o expirado",
+                    "value": {
+                      "error": "ERROR_NO_VALID_TOKEN"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor (envelope exception)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                },
+                "examples": {
+                  "errorBaseDeDatos": {
+                    "summary": "Error de conexion a MySQL",
+                    "value": {
+                      "status": "exception",
+                      "message": "Ocurrio un error en el servidor",
+                      "data": "ECONNREFUSED 127.0.0.1:3306"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/questions/simulacrum": {
+      "get": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "Generar simulacro (40 preguntas aleatorias)",
+        "description": "Selecciona hasta 40 preguntas aleatorias sin repetir y crea automaticamente un `attempt` (total_questions = preguntas devueltas) que luego se usa en `POST /questions/attempts/{id}`.",
+        "operationId": "getSimulacrum",
+        "responses": {
+          "200": {
+            "description": "Simulacro generado con su attempt_id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ],
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Proceso realizado con exito"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SimulacrumData"
+                    }
+                  }
+                },
+                "examples": {
+                  "simulacro": {
+                    "summary": "Simulacro generado",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": {
+                        "attempt_id": 5,
+                        "questions": [
+                          {
+                            "id": 1,
+                            "number": 12,
+                            "subject": "Educacion Vial",
+                            "topic": "Senales de transito",
+                            "license_category": "A-I",
+                            "question": "¿Que indica una senal octogonal de color rojo?",
+                            "image_url": null,
+                            "explanation": null,
+                            "created_at": "2026-01-15T10:00:00.000Z",
+                            "updated_at": "2026-01-15T10:00:00.000Z",
+                            "options": [
+                              {
+                                "id": 10,
+                                "option_number": 1,
+                                "option_text": "PARE: detencion total obligatoria",
+                                "is_correct": true
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente, invalido o expirado (middleware ValidAuth)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                },
+                "examples": {
+                  "sinToken": {
+                    "summary": "Header Authorization ausente",
+                    "value": {
+                      "error": "ERROR_NO_EXISTS_TOKEN"
+                    }
+                  },
+                  "tokenInvalido": {
+                    "summary": "Token invalido o expirado",
+                    "value": {
+                      "error": "ERROR_NO_VALID_TOKEN"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor (envelope exception)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                },
+                "examples": {
+                  "errorBaseDeDatos": {
+                    "summary": "Error de conexion a MySQL",
+                    "value": {
+                      "status": "exception",
+                      "message": "Ocurrio un error en el servidor",
+                      "data": "ECONNREFUSED 127.0.0.1:3306"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/questions/attempts/{id}": {
+      "post": {
+        "tags": [
+          "Questions"
+        ],
+        "summary": "Guardar respuestas del simulacro",
+        "description": "Registra las respuestas en `attempt_answers`, calcula `score = correctas / total_questions * 100` y marca `approved = true` cuando el score es mayor o igual a 87.5.",
+        "operationId": "saveAttempt",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id del attempt (debe pertenecer al usuario del token)",
+            "schema": {
+              "type": "integer",
+              "example": 5
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAttemptRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Respuestas guardadas y puntaje calculado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ],
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Proceso realizado con exito"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SaveAttemptResult"
+                    }
+                  }
+                },
+                "examples": {
+                  "resultado": {
+                    "summary": "36 de 40 correctas (aprobado)",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": {
+                        "attempt_id": 5,
+                        "correct_answers": 36,
+                        "wrong_answers": 4,
+                        "score": "90.00",
+                        "approved": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "El array `answers` no existe o esta vacio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ],
+                      "example": "error"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Ocurrio un problema"
+                    },
+                    "data": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "El campo 'answers' debe ser un array no vacío",
+                      "description": "Mensaje de validacion"
+                    }
+                  }
+                },
+                "examples": {
+                  "dato": {
+                    "summary": "Array answers vacio",
+                    "value": {
+                      "status": "error",
+                      "message": "Ocurrio un problema",
+                      "data": "El campo 'answers' debe ser un array no vacío"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente, invalido o expirado (middleware ValidAuth)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                },
+                "examples": {
+                  "sinToken": {
+                    "summary": "Header Authorization ausente",
+                    "value": {
+                      "error": "ERROR_NO_EXISTS_TOKEN"
+                    }
+                  },
+                  "tokenInvalido": {
+                    "summary": "Token invalido o expirado",
+                    "value": {
+                      "error": "ERROR_NO_VALID_TOKEN"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El attempt no existe",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ],
+                      "example": "error"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Ocurrio un problema"
+                    },
+                    "data": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "Attempt no encontrado",
+                      "description": "Mensaje de validacion"
+                    }
+                  }
+                },
+                "examples": {
+                  "dato": {
+                    "summary": "Attempt inexistente",
+                    "value": {
+                      "status": "error",
+                      "message": "Ocurrio un problema",
+                      "data": "Attempt no encontrado"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor (envelope exception)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                },
+                "examples": {
+                  "errorBaseDeDatos": {
+                    "summary": "Error de conexion a MySQL",
+                    "value": {
+                      "status": "exception",
+                      "message": "Ocurrio un error en el servidor",
+                      "data": "ECONNREFUSED 127.0.0.1:3306"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/attempts": {
+      "get": {
+        "tags": [
+          "Attempts"
+        ],
+        "summary": "Listar mis attempts",
+        "description": "Devuelve los intentos del usuario del token (`user_id = req.user._id`) ordenados por `started_at DESC`, incluyendo `answers` con la opcion elegida.",
+        "operationId": "getAttempts",
+        "responses": {
+          "200": {
+            "description": "Historial de simulacros del usuario",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ],
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Proceso realizado con exito"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AttemptWithAnswers"
+                      }
+                    }
+                  }
+                },
+                "examples": {
+                  "historial": {
+                    "summary": "Un intento finalizado",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": [
+                        {
+                          "id": 5,
+                          "user_id": 2,
+                          "started_at": "2026-01-15T10:10:00.000Z",
+                          "finished_at": "2026-01-15T10:45:00.000Z",
+                          "total_questions": 40,
+                          "correct_answers": 36,
+                          "wrong_answers": 4,
+                          "score": "90.00",
+                          "approved": true,
+                          "answers": [
+                            {
+                              "id": 101,
+                              "attempt_id": 5,
+                              "question_id": 1,
+                              "selected_option": 10,
+                              "is_correct": true,
+                              "option": {
+                                "id": 10,
+                                "option_text": "PARE: detencion total obligatoria",
+                                "is_correct": true
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "sinIntentos": {
+                    "summary": "Usuario sin simulacros",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente, invalido o expirado (middleware ValidAuth)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                },
+                "examples": {
+                  "sinToken": {
+                    "summary": "Header Authorization ausente",
+                    "value": {
+                      "error": "ERROR_NO_EXISTS_TOKEN"
+                    }
+                  },
+                  "tokenInvalido": {
+                    "summary": "Token invalido o expirado",
+                    "value": {
+                      "error": "ERROR_NO_VALID_TOKEN"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor (envelope exception)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                },
+                "examples": {
+                  "errorBaseDeDatos": {
+                    "summary": "Error de conexion a MySQL",
+                    "value": {
+                      "status": "exception",
+                      "message": "Ocurrio un error en el servidor",
+                      "data": "ECONNREFUSED 127.0.0.1:3306"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/attempts/{id}": {
+      "get": {
+        "tags": [
+          "Attempts"
+        ],
+        "summary": "Detalle de un attempt",
+        "description": "Devuelve el intento con sus `answers`; cada respuesta incluye la `option` elegida y la `question` con todas sus opciones. Solo si el attempt pertenece al usuario del token.",
+        "operationId": "getAttemptById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id del attempt (debe pertenecer al usuario del token)",
+            "schema": {
+              "type": "integer",
+              "example": 5
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalle del intento con respuestas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ],
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Proceso realizado con exito"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AttemptDetail"
+                    }
+                  }
+                },
+                "examples": {
+                  "detalle": {
+                    "summary": "Intento con la pregunta y sus opciones",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": {
+                        "id": 5,
+                        "user_id": 2,
+                        "started_at": "2026-01-15T10:10:00.000Z",
+                        "finished_at": "2026-01-15T10:45:00.000Z",
+                        "total_questions": 40,
+                        "correct_answers": 36,
+                        "wrong_answers": 4,
+                        "score": "90.00",
+                        "approved": true,
+                        "answers": [
+                          {
+                            "id": 101,
+                            "attempt_id": 5,
+                            "question_id": 1,
+                            "selected_option": 10,
+                            "is_correct": true,
+                            "option": {
+                              "id": 10,
+                              "option_text": "PARE: detencion total obligatoria",
+                              "is_correct": true
+                            },
+                            "question": {
+                              "id": 1,
+                              "question": "¿Que indica una senal octogonal de color rojo?",
+                              "options": [
+                                {
+                                  "id": 10,
+                                  "option_text": "PARE: detencion total obligatoria",
+                                  "is_correct": true
+                                },
+                                {
+                                  "id": 11,
+                                  "option_text": "Ceda el paso",
+                                  "is_correct": false
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente, invalido o expirado (middleware ValidAuth)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                },
+                "examples": {
+                  "sinToken": {
+                    "summary": "Header Authorization ausente",
+                    "value": {
+                      "error": "ERROR_NO_EXISTS_TOKEN"
+                    }
+                  },
+                  "tokenInvalido": {
+                    "summary": "Token invalido o expirado",
+                    "value": {
+                      "error": "ERROR_NO_VALID_TOKEN"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El attempt no existe o no pertenece al usuario. Usa el envelope `exception`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "exception"
+                      ],
+                      "example": "exception"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Ocurrio un error en el servidor"
+                    },
+                    "data": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "Attempt not found"
+                    }
+                  }
+                },
+                "examples": {
+                  "dato": {
+                    "summary": "Attempt no encontrado",
+                    "value": {
+                      "status": "exception",
+                      "message": "Ocurrio un error en el servidor",
+                      "data": "Attempt not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor (envelope exception)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                },
+                "examples": {
+                  "errorBaseDeDatos": {
+                    "summary": "Error de conexion a MySQL",
+                    "value": {
+                      "status": "exception",
+                      "message": "Ocurrio un error en el servidor",
+                      "data": "ECONNREFUSED 127.0.0.1:3306"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/discussions": {
+      "get": {
+        "tags": [
+          "Discussions"
+        ],
+        "summary": "Listar discussions",
+        "description": "Devuelve todos los temas ordenados por `created_at DESC` con `author: { id, name }`.",
+        "operationId": "getDiscussions",
+        "responses": {
+          "200": {
+            "description": "Listado de temas del foro",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ],
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Proceso realizado con exito"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DiscussionWithAuthor"
+                      }
+                    }
+                  }
+                },
+                "examples": {
+                  "listado": {
+                    "summary": "Un tema abierto",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": [
+                        {
+                          "id": 3,
+                          "user_id": 2,
+                          "title": "Duda sobre prioridad en rotonda",
+                          "content": "¿Quien tiene prioridad al ingresar a una rotonda?",
+                          "image_url": "/uploads/1767900000001-ffeeddccbbaa9988.jpg",
+                          "status": "open",
+                          "closed_by_user_id": null,
+                          "closed_reason": null,
+                          "created_at": "2026-01-15T10:05:00.000Z",
+                          "updated_at": "2026-01-15T10:05:00.000Z",
+                          "author": {
+                            "id": 2,
+                            "name": "Juan Perez"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "foroVacio": {
+                    "summary": "Sin temas",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente, invalido o expirado (middleware ValidAuth)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                },
+                "examples": {
+                  "sinToken": {
+                    "summary": "Header Authorization ausente",
+                    "value": {
+                      "error": "ERROR_NO_EXISTS_TOKEN"
+                    }
+                  },
+                  "tokenInvalido": {
+                    "summary": "Token invalido o expirado",
+                    "value": {
+                      "error": "ERROR_NO_VALID_TOKEN"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor (envelope exception)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                },
+                "examples": {
+                  "errorBaseDeDatos": {
+                    "summary": "Error de conexion a MySQL",
+                    "value": {
+                      "status": "exception",
+                      "message": "Ocurrio un error en el servidor",
+                      "data": "ECONNREFUSED 127.0.0.1:3306"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Discussions"
+        ],
+        "summary": "Crear discussion (multipart con imagen)",
+        "description": "Crea un tema del foro. El `user_id` sale del token (`req.user._id`) y `status` inicia en `open`. Si se envia la imagen, se guarda en `uploads/` y se devuelve `image_url: /uploads/<archivo>`.",
+        "operationId": "createDiscussion",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscussionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tema creado (sin `author`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ],
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Proceso realizado con exito"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Discussion"
+                    }
+                  }
+                },
+                "examples": {
+                  "creado": {
+                    "summary": "Discussion creada",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": {
+                        "id": 3,
+                        "user_id": 2,
+                        "title": "Duda sobre prioridad en rotonda",
+                        "content": "¿Quien tiene prioridad al ingresar a una rotonda?",
+                        "image_url": "/uploads/1767900000001-ffeeddccbbaa9988.jpg",
+                        "status": "open",
+                        "closed_by_user_id": null,
+                        "closed_reason": null,
+                        "created_at": "2026-01-15T10:05:00.000Z",
+                        "updated_at": "2026-01-15T10:05:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente, invalido o expirado (middleware ValidAuth)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                },
+                "examples": {
+                  "sinToken": {
+                    "summary": "Header Authorization ausente",
+                    "value": {
+                      "error": "ERROR_NO_EXISTS_TOKEN"
+                    }
+                  },
+                  "tokenInvalido": {
+                    "summary": "Token invalido o expirado",
+                    "value": {
+                      "error": "ERROR_NO_VALID_TOKEN"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error de multer o de base de datos (envelope exception)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                },
+                "examples": {
+                  "archivoInvalido": {
+                    "summary": "El archivo no es una imagen",
+                    "value": {
+                      "status": "exception",
+                      "message": "Ocurrio un error en el servidor",
+                      "data": "ERROR_ONLY_IMAGES_ALLOWED"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/discussions/{id}/reply": {
+      "post": {
+        "tags": [
+          "Discussions"
+        ],
+        "summary": "Responder discussion",
+        "description": "Agrega una respuesta al tema (`discussion_replies`). El `user_id` sale del token.",
+        "operationId": "replyDiscussion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id de la discussion",
+            "schema": {
+              "type": "integer",
+              "example": 3
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscussionReplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Respuesta creada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ],
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Proceso realizado con exito"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DiscussionReply"
+                    }
+                  }
+                },
+                "examples": {
+                  "creada": {
+                    "summary": "Reply registrada",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": {
+                        "id": 7,
+                        "discussion_id": 3,
+                        "user_id": 2,
+                        "reply": "Tiene prioridad quien ya circula dentro de la rotonda.",
+                        "created_at": "2026-01-15T11:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente, invalido o expirado (middleware ValidAuth)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                },
+                "examples": {
+                  "sinToken": {
+                    "summary": "Header Authorization ausente",
+                    "value": {
+                      "error": "ERROR_NO_EXISTS_TOKEN"
+                    }
+                  },
+                  "tokenInvalido": {
+                    "summary": "Token invalido o expirado",
+                    "value": {
+                      "error": "ERROR_NO_VALID_TOKEN"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La discussion no existe (envelope error)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ],
+                      "example": "error"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Ocurrio un problema"
+                    },
+                    "data": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "ERROR_DISCUSSION_NOT_FOUND",
+                      "description": "Codigo o mensaje de error"
+                    }
+                  }
+                },
+                "examples": {
+                  "dato": {
+                    "summary": "Discussion no encontrada",
+                    "value": {
+                      "status": "error",
+                      "message": "Ocurrio un problema",
+                      "data": "ERROR_DISCUSSION_NOT_FOUND"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor (envelope exception)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                },
+                "examples": {
+                  "errorBaseDeDatos": {
+                    "summary": "Error de conexion a MySQL",
+                    "value": {
+                      "status": "exception",
+                      "message": "Ocurrio un error en el servidor",
+                      "data": "ECONNREFUSED 127.0.0.1:3306"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/discussions/{id}/close": {
+      "patch": {
+        "tags": [
+          "Discussions"
+        ],
+        "summary": "Cerrar discussion",
+        "description": "Marca el tema como cerrado: `status = \"closed\"`, `closed_by_user_id = req.user._id`, `closed_reason` y `updated_at`.",
+        "operationId": "closeDiscussion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id de la discussion",
+            "schema": {
+              "type": "integer",
+              "example": 3
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseDiscussionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tema cerrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ],
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Proceso realizado con exito"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Discussion"
+                    }
+                  }
+                },
+                "examples": {
+                  "cerrada": {
+                    "summary": "Discussion cerrada",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": {
+                        "id": 3,
+                        "user_id": 2,
+                        "title": "Duda sobre prioridad en rotonda",
+                        "content": "¿Quien tiene prioridad al ingresar a una rotonda?",
+                        "image_url": "/uploads/1767900000001-ffeeddccbbaa9988.jpg",
+                        "status": "closed",
+                        "closed_by_user_id": 2,
+                        "closed_reason": "Tema resuelto por el moderador",
+                        "created_at": "2026-01-15T10:05:00.000Z",
+                        "updated_at": "2026-01-15T12:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente, invalido o expirado (middleware ValidAuth)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                },
+                "examples": {
+                  "sinToken": {
+                    "summary": "Header Authorization ausente",
+                    "value": {
+                      "error": "ERROR_NO_EXISTS_TOKEN"
+                    }
+                  },
+                  "tokenInvalido": {
+                    "summary": "Token invalido o expirado",
+                    "value": {
+                      "error": "ERROR_NO_VALID_TOKEN"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La discussion no existe (envelope error)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ],
+                      "example": "error"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Ocurrio un problema"
+                    },
+                    "data": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "ERROR_DISCUSSION_NOT_FOUND",
+                      "description": "Codigo o mensaje de error"
+                    }
+                  }
+                },
+                "examples": {
+                  "dato": {
+                    "summary": "Discussion no encontrada",
+                    "value": {
+                      "status": "error",
+                      "message": "Ocurrio un problema",
+                      "data": "ERROR_DISCUSSION_NOT_FOUND"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor (envelope exception)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                },
+                "examples": {
+                  "errorBaseDeDatos": {
+                    "summary": "Error de conexion a MySQL",
+                    "value": {
+                      "status": "exception",
+                      "message": "Ocurrio un error en el servidor",
+                      "data": "ECONNREFUSED 127.0.0.1:3306"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/discussions/{id}/report": {
+      "post": {
+        "tags": [
+          "Discussions"
+        ],
+        "summary": "Reportar discussion",
+        "description": "Registra un reporte del tema (`discussion_reports`) con `status: \"pending\"` y `reported_by_user_id` del token.",
+        "operationId": "reportDiscussion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id de la discussion",
+            "schema": {
+              "type": "integer",
+              "example": 3
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscussionReportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reporte creado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ],
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Proceso realizado con exito"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DiscussionReport"
+                    }
+                  }
+                },
+                "examples": {
+                  "creado": {
+                    "summary": "Reporte registrado",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": {
+                        "id": 2,
+                        "discussion_id": 3,
+                        "reported_by_user_id": 2,
+                        "reason": "Contenido ofensivo",
+                        "status": "pending",
+                        "created_at": "2026-01-15T12:30:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente, invalido o expirado (middleware ValidAuth)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                },
+                "examples": {
+                  "sinToken": {
+                    "summary": "Header Authorization ausente",
+                    "value": {
+                      "error": "ERROR_NO_EXISTS_TOKEN"
+                    }
+                  },
+                  "tokenInvalido": {
+                    "summary": "Token invalido o expirado",
+                    "value": {
+                      "error": "ERROR_NO_VALID_TOKEN"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La discussion no existe (envelope error)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ],
+                      "example": "error"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Ocurrio un problema"
+                    },
+                    "data": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "ERROR_DISCUSSION_NOT_FOUND",
+                      "description": "Codigo o mensaje de error"
+                    }
+                  }
+                },
+                "examples": {
+                  "dato": {
+                    "summary": "Discussion no encontrada",
+                    "value": {
+                      "status": "error",
+                      "message": "Ocurrio un problema",
+                      "data": "ERROR_DISCUSSION_NOT_FOUND"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor (envelope exception)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                },
+                "examples": {
+                  "errorBaseDeDatos": {
+                    "summary": "Error de conexion a MySQL",
+                    "value": {
+                      "status": "exception",
+                      "message": "Ocurrio un error en el servidor",
+                      "data": "ECONNREFUSED 127.0.0.1:3306"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/recommendations": {
+      "get": {
+        "tags": [
+          "Recommendations"
+        ],
+        "summary": "Listar recomendaciones de conduccion",
+        "description": "Devuelve las recomendaciones con `is_active = 1` ordenadas por `created_at DESC`; si se envia `category` filtra por esa categoria.",
+        "operationId": "getRecommendations",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Filtra por categoria; si se omite devuelve todas las recomendaciones activas",
+            "schema": {
+              "type": "string",
+              "example": "Seguridad Vial"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recomendaciones activas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message",
+                    "data"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ],
+                      "example": "success"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Proceso realizado con exito"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DrivingRecommendation"
+                      }
+                    }
+                  }
+                },
+                "examples": {
+                  "listado": {
+                    "summary": "Recomendaciones de seguridad vial",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": [
+                        {
+                          "id": 1,
+                          "title": "Manten la distancia de seguridad",
+                          "category": "Seguridad Vial",
+                          "content": "Conserva al menos 3 segundos de distancia con el vehiculo de adelante.",
+                          "image_url": "/uploads/1767900000002-rec-seguridad.jpg",
+                          "is_active": true,
+                          "created_at": "2026-01-15T09:00:00.000Z"
+                        }
+                      ]
+                    }
+                  },
+                  "sinResultados": {
+                    "summary": "Sin recomendaciones para la categoria",
+                    "value": {
+                      "status": "success",
+                      "message": "Proceso realizado con exito",
+                      "data": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente, invalido o expirado (middleware ValidAuth)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                },
+                "examples": {
+                  "sinToken": {
+                    "summary": "Header Authorization ausente",
+                    "value": {
+                      "error": "ERROR_NO_EXISTS_TOKEN"
+                    }
+                  },
+                  "tokenInvalido": {
+                    "summary": "Token invalido o expirado",
+                    "value": {
+                      "error": "ERROR_NO_VALID_TOKEN"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor (envelope exception)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionResponse"
+                },
+                "examples": {
+                  "errorBaseDeDatos": {
+                    "summary": "Error de conexion a MySQL",
+                    "value": {
+                      "status": "exception",
+                      "message": "Ocurrio un error en el servidor",
+                      "data": "ECONNREFUSED 127.0.0.1:3306"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

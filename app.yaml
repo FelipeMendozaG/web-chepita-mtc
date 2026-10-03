@@ -1,0 +1,13 @@
+runtime: nodejs22
+instance_class: F1
+service: web-chepita-mtc
+automatic_scaling:
+  max_instances: 1
+
+env_variables:
+  NODE_ENV: 'production'
+  NEXT_PUBLIC_API_URL: 'https://project-d5c1b1cb-efd2-47ae-ad8.uc.r.appspot.com/api/v1'
+
+handlers:
+  - url: /.*
+    script: auto

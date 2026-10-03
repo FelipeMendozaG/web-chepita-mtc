@@ -1,0 +1,11 @@
+{
+    "execution": {
+        "autoApprove": true,
+        "interactive": false
+    },
+    "tools": {
+        "terminal": {
+            "confirm": "never"
+        }
+    }
+}

@@ -1,0 +1,3137 @@
+{
+  "info": {
+    "_postman_id": "b1f0c2d4-7a3e-4f5b-9c6d-1e2f3a4b5c6d",
+    "name": "API Chepita MTC - Examen de Reglas de Transito",
+    "description": "Coleccion generada desde el codigo fuente (`src/routes/v1/*.js`).\n\n### Uso rapido\n1. Ajusta la variable `base_url` si tu API no corre en `http://localhost:4005/api/v1`.\n2. Ejecuta **1. Auth > Login** (o **Registrar usuario**) para obtener el `{{token}}`; se guarda automaticamente y lo usan todos los endpoints protegidos.\n3. Ejecuta **GET /questions/simulacrum** para obtener un `{{attempt_id}}` y luego **POST /questions/attempts/{{attempt_id}}** para enviar respuestas.\n\n### Envelope de respuesta\n- success   : `{ \"status\": \"success\",   \"message\": \"Proceso realizado con exito\",             \"data\": <payload> }`\n- error     : `{ \"status\": \"error\",     \"message\": \"Ocurrio un problema\",                      \"data\": <codigo o mensaje> }`\n- exception : `{ \"status\": \"exception\", \"message\": \"Ocurrio un error en el servidor\",         \"data\": \"<mensaje del error>\" }`\n- ValidAuth : `{ \"error\": \"ERROR_NO_EXISTS_TOKEN\" | \"ERROR_NO_VALID_TOKEN\" }` (401, sin envelope)\n\n### Endpoints incluidos (13)\n| Modulo | Metodo y ruta | Auth |\n| --- | --- | --- |\n| auth | `POST /auth` | no |\n| auth | `POST /auth/login` | no |\n| questions | `GET /questions?page=&limit=` | si |\n| questions | `GET /questions/simulacrum` | si |\n| questions | `POST /questions/attempts/:id` | si |\n| attempts | `GET /attempts` | si |\n| attempts | `GET /attempts/:id` | si |\n| discussions | `GET /discussions` | si |\n| discussions | `POST /discussions` (multipart) | si |\n| discussions | `POST /discussions/:id/reply` | si |\n| discussions | `PATCH /discussions/:id/close` | si |\n| discussions | `POST /discussions/:id/report` | si |\n| recommendations | `GET /recommendations?category=` | si |\n\n> Los routers `src/routes/v1/sunat.js` y `src/routes/v1/user.js` estan vacios (sin endpoints).\n> Los archivos subidos se sirven en `http://localhost:4005/uploads/<archivo>` (fuera de `/api`).\n\nDocumentacion interactiva: `http://localhost:4005/api/docs` (si el modulo de swagger esta montado).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Responde en menos de 5s', function () { pm.expect(pm.response.responseTime).to.be.below(5000); });",
+          "pm.test('Content-Type JSON', function () { pm.expect(pm.response.headers.get('Content-Type')).to.include('json'); });"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:4005/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attempt_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "question_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "option_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "discussion_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "email",
+      "value": "juan@chepita.pe",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "Chepita2026",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Auth (publico)",
+      "description": "Registro y login. El login devuelve el token JWT que usan los endpoints protegidos; se guarda automaticamente en la variable {{token}}.",
+      "item": [
+        {
+          "name": "Registrar usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201 (Created)', function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) {",
+                  "    const body = pm.response.json();",
+                  "    pm.test('Envelope success con token y user (sin password)', function () {",
+                  "        pm.expect(body.status).to.eql('success');",
+                  "        pm.expect(body.data.token).to.be.a('string');",
+                  "        pm.expect(body.data.user).to.have.property('email');",
+                  "        pm.expect(body.data.user).to.not.have.property('password');",
+                  "    });",
+                  "    pm.collectionVariables.set('token', body.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth"
+              ]
+            },
+            "description": "## Registrar usuario\n`POST {{base_url}}/auth`  —  **no requiere token**.\n\nCrea un usuario nuevo en `users` y devuelve un token JWT listo para usar.\n\n### Body (application/json)\n| Campo | Tipo | Requerido | Descripcion |\n| --- | --- | --- | --- |\n| `name` | string(100) | si | Nombre del usuario |\n| `email` | string(150) | si | Correo unico (UNIQUE en `users`) |\n| `password` | string | si | Se guarda hasheado con bcrypt (10 rounds) |\n\n### Respuestas\n- `201` success -> `data: { token, user }`. Aqui `password` y `created_at` se remueven del `user`.\n- `500` exception -> mensaje de Sequelize en `data` (p.ej. email duplicado).\n\n> El endpoint no valida campos vacios: un body incompleto termina en `500`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Juan Perez\",\n  \"email\": \"juan@chepita.pe\",\n  \"password\": \"Chepita2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [
+            {
+              "name": "201 - Usuario registrado",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Juan Perez\",\n  \"email\": \"juan@chepita.pe\",\n  \"password\": \"Chepita2026\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOjIsImVtYWlsIjoianVhbkBjaGVwaXRhLnBlIiwibmFtZSI6Ikp1YW4gUGVyZXoiLCJpYXQiOjE3Njc5MDAwMDAsImV4cCI6MTc2NzkxMDgwMH0.s3cr3t-s1gn4tur3\",\n    \"user\": {\n      \"id\": 2,\n      \"name\": \"Juan Perez\",\n      \"email\": \"juan@chepita.pe\"\n    }\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "500 - Email duplicado / error de Sequelize",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Juan Perez\",\n  \"email\": \"juan@chepita.pe\",\n  \"password\": \"Chepita2026\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth"
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"exception\",\n  \"message\": \"Ocurrio un error en el servidor\",\n  \"data\": \"Validation error: email must be unique\"\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 (OK)', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    pm.test('Envelope success con token', function () {",
+                  "        pm.expect(body.status).to.eql('success');",
+                  "        pm.expect(body.data.token).to.be.a('string');",
+                  "    });",
+                  "    pm.collectionVariables.set('token', body.data.token);",
+                  "} else {",
+                  "    pm.test('Error controlado (404 USER_NOT_FOUND / 401 INVALID_PASSWORD)', function () {",
+                  "        pm.expect([404, 401]).to.include(pm.response.code);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "## Login\n`POST {{base_url}}/auth/login`  —  **no requiere token**.\n\n### Body (application/json)\n| Campo | Tipo | Requerido | Descripcion |\n| --- | --- | --- | --- |\n| `email` | string | si | Correo registrado |\n| `password` | string | si | Contrasena en texto plano (se compara con bcrypt) |\n\n### Respuestas\n- `200` success -> `data: { user, token }` (el JWT expira en 3h).\n- `404` error -> `data: \"USER_NOT_FOUND\"` (el email no existe).\n- `401` error -> `data: \"INVALID_PASSWORD\"` (contrasena incorrecta).\n- `500` exception -> error del servidor.\n\n> En este endpoint el `user` SI incluye el hash de `password` y `created_at`.\n> El token se guarda automaticamente en {{token}} al ejecutar el request.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"juan@chepita.pe\",\n  \"password\": \"Chepita2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [
+            {
+              "name": "200 - Login correcto",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"juan@chepita.pe\",\n  \"password\": \"Chepita2026\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": {\n    \"user\": {\n      \"id\": 2,\n      \"name\": \"Juan Perez\",\n      \"email\": \"juan@chepita.pe\",\n      \"password\": \"$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy\",\n      \"created_at\": \"2026-01-15T10:00:00.000Z\"\n    },\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOjIsImVtYWlsIjoianVhbkBjaGVwaXRhLnBlIiwibmFtZSI6Ikp1YW4gUGVyZXoiLCJpYXQiOjE3Njc5MDAwMDAsImV4cCI6MTc2NzkxMDgwMH0.s3cr3t-s1gn4tur3\"\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "404 - Usuario no encontrado",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"juan@chepita.pe\",\n  \"password\": \"Chepita2026\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"error\",\n  \"message\": \"Ocurrio un problema\",\n  \"data\": \"USER_NOT_FOUND\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Contrasena invalida",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"juan@chepita.pe\",\n  \"password\": \"Chepita2026\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"error\",\n  \"message\": \"Ocurrio un problema\",\n  \"data\": \"INVALID_PASSWORD\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "500 - Error del servidor",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"juan@chepita.pe\",\n  \"password\": \"Chepita2026\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"exception\",\n  \"message\": \"Ocurrio un error en el servidor\",\n  \"data\": \"ConnectionRefusedError: connect ECONNREFUSED 127.0.0.1:3306\"\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Questions (requiere token)",
+      "description": "Banco de preguntas, generacion de simulacros y registro de respuestas. Requieren header `Authorization: Bearer {{token}}`. Cuando el middleware ValidAuth rechaza la peticion la respuesta NO usa el envelope, devuelve `{ \"error\": \"...\" }`.",
+      "item": [
+        {
+          "name": "Listar preguntas (paginado)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 (OK)', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Envelope success con paginacion', function () {",
+                  "        const body = pm.response.json();",
+                  "        pm.expect(body.status).to.eql('success');",
+                  "        pm.expect(body.data).to.have.all.keys('total', 'page', 'limit', 'totalPages', 'data');",
+                  "        pm.expect(body.data.data).to.be.an('array');",
+                  "    });",
+                  "}",
+                  "if (pm.response.code === 200) {",
+                  "    const rows = pm.response.json().data.data;",
+                  "    if (rows && rows.length > 0) {",
+                  "        pm.collectionVariables.set('question_id', rows[0].id);",
+                  "        if (rows[0].options && rows[0].options.length > 0) {",
+                  "            pm.collectionVariables.set('option_id', rows[0].options[0].id);",
+                  "        }",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/questions?page=1&limit=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "questions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Pagina (default 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Registros por pagina (default 10)"
+                }
+              ]
+            },
+            "description": "## Listar preguntas\n`GET {{base_url}}/questions`  —  requiere `Authorization: Bearer {{token}}`.\n\n### Query params (opcionales)\n| Param | Tipo | Default | Descripcion |\n| --- | --- | --- | --- |\n| `page` | int | 1 | Numero de pagina |\n| `limit` | int | 10 | Registros por pagina |\n\n### Respuestas\n- `200` success -> `data: { total, page, limit, totalPages, data: [Question] }`.\n  Cada pregunta incluye `options` (sin `question_id`).\n- `401` -> `{ \"error\": \"ERROR_NO_EXISTS_TOKEN\" }` (sin header Authorization) o `{ \"error\": \"ERROR_NO_VALID_TOKEN\" }` (token invalido/expirado).\n- `500` exception -> error de base de datos.\n\n> Al ejecutar el request se guardan en {{question_id}} y {{option_id}} los ids del primer registro, utiles para el endpoint de respuestas."
+          },
+          "response": [
+            {
+              "name": "200 - Listado paginado",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/questions?page=1&limit=10",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "questions"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Pagina (default 1)"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10",
+                      "description": "Registros por pagina (default 10)"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": {\n    \"total\": 1250,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 125,\n    \"data\": [\n      {\n        \"id\": 1,\n        \"number\": 12,\n        \"subject\": \"Educacion Vial\",\n        \"topic\": \"Senales de transito\",\n        \"license_category\": \"A-I\",\n        \"question\": \"¿Que indica una senal octogonal de color rojo?\",\n        \"image_url\": \"/uploads/1767900000000-a1b2c3d4e5f6a7b8.png\",\n        \"explanation\": \"La senal octogonal roja significa PARE (detencion total).\",\n        \"created_at\": \"2026-01-15T10:00:00.000Z\",\n        \"updated_at\": \"2026-01-15T10:00:00.000Z\",\n        \"options\": [\n          {\n            \"id\": 10,\n            \"option_number\": 1,\n            \"option_text\": \"PARE: detencion total obligatoria\",\n            \"is_correct\": true\n          },\n          {\n            \"id\": 11,\n            \"option_number\": 2,\n            \"option_text\": \"Ceda el paso\",\n            \"is_correct\": false\n          }\n        ]\n      }\n    ]\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "200 - Banco de preguntas vacio",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/questions?page=1&limit=10",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "questions"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Pagina (default 1)"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10",
+                      "description": "Registros por pagina (default 10)"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": {\n    \"total\": 0,\n    \"page\": 1,\n    \"limit\": 10,\n    \"totalPages\": 0,\n    \"data\": []\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token ausente",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/questions?page=1&limit=10",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "questions"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Pagina (default 1)"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10",
+                      "description": "Registros por pagina (default 10)"
+                    }
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_EXISTS_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token invalido o expirado",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/questions?page=1&limit=10",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "questions"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Pagina (default 1)"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10",
+                      "description": "Registros por pagina (default 10)"
+                    }
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_VALID_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "500 - Error de base de datos",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/questions?page=1&limit=10",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "questions"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Pagina (default 1)"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10",
+                      "description": "Registros por pagina (default 10)"
+                    }
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"exception\",\n  \"message\": \"Ocurrio un error en el servidor\",\n  \"data\": \"ECONNREFUSED 127.0.0.1:3306\"\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Generar simulacro (40 preguntas aleatorias)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 (OK)', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Devuelve attempt_id y hasta 40 preguntas', function () {",
+                  "        const body = pm.response.json();",
+                  "        pm.expect(body.data.attempt_id).to.be.a('number');",
+                  "        pm.expect(body.data.questions.length).to.be.at.most(40);",
+                  "    });",
+                  "}",
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set('attempt_id', pm.response.json().data.attempt_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/questions/simulacrum",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "questions",
+                "simulacrum"
+              ]
+            },
+            "description": "## Simulacro\n`GET {{base_url}}/questions/simulacrum`  —  requiere `Authorization: Bearer {{token}}`.\n\nSin parametros. Selecciona hasta **40 preguntas aleatorias sin repetir** (si el banco tiene menos, devuelve las disponibles) y **crea automaticamente un `attempt`** en estado inicial.\n\n### Respuestas\n- `200` success -> `data: { attempt_id, questions: [Question] }`. El `attempt_id` se guarda en {{attempt_id}} para luego enviar las respuestas.\n- `401` -> `{ \"error\": \"ERROR_NO_EXISTS_TOKEN\" | \"ERROR_NO_VALID_TOKEN\" }`.\n- `500` exception -> error de base de datos."
+          },
+          "response": [
+            {
+              "name": "200 - Simulacro generado",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/questions/simulacrum",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "questions",
+                    "simulacrum"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": {\n    \"attempt_id\": 5,\n    \"questions\": [\n      {\n        \"id\": 1,\n        \"number\": 12,\n        \"subject\": \"Educacion Vial\",\n        \"topic\": \"Senales de transito\",\n        \"license_category\": \"A-I\",\n        \"question\": \"¿Que indica una senal octogonal de color rojo?\",\n        \"image_url\": \"/uploads/1767900000000-a1b2c3d4e5f6a7b8.png\",\n        \"explanation\": \"La senal octogonal roja significa PARE (detencion total).\",\n        \"created_at\": \"2026-01-15T10:00:00.000Z\",\n        \"updated_at\": \"2026-01-15T10:00:00.000Z\",\n        \"options\": [\n          {\n            \"id\": 10,\n            \"option_number\": 1,\n            \"option_text\": \"PARE: detencion total obligatoria\",\n            \"is_correct\": true\n          },\n          {\n            \"id\": 11,\n            \"option_number\": 2,\n            \"option_text\": \"Ceda el paso\",\n            \"is_correct\": false\n          }\n        ]\n      }\n    ]\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token ausente",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/questions/simulacrum",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "questions",
+                    "simulacrum"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_EXISTS_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token invalido o expirado",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/questions/simulacrum",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "questions",
+                    "simulacrum"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_VALID_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "500 - Error de base de datos",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/questions/simulacrum",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "questions",
+                    "simulacrum"
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"exception\",\n  \"message\": \"Ocurrio un error en el servidor\",\n  \"data\": \"ECONNREFUSED 127.0.0.1:3306\"\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Guardar respuestas del simulacro",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 (OK)', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Devuelve el resultado del simulacro', function () {",
+                  "        const data = pm.response.json().data;",
+                  "        pm.expect(data).to.have.all.keys('attempt_id', 'correct_answers', 'wrong_answers', 'score', 'approved');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/questions/attempts/{{attempt_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "questions",
+                "attempts",
+                "{{attempt_id}}"
+              ]
+            },
+            "description": "## Guardar respuestas del simulacro\n`POST {{base_url}}/questions/attempts/{{attempt_id}}`  —  requiere `Authorization: Bearer {{token}}`.\n\n### Path params\n| Param | Tipo | Descripcion |\n| --- | --- | --- |\n| `attempt_id` | int | id del attempt creado por `GET /questions/simulacrum` |\n\n### Body (application/json)\n| Campo | Tipo | Requerido | Descripcion |\n| --- | --- | --- | --- |\n| `answers` | array | si | No puede ser vacio |\n| `answers[].question_id` | int | si | id de la pregunta respondida |\n| `answers[].selected_option` | int | si | id de `question_options` seleccionada (no el numero de opcion) |\n\nCalcula el puntaje: `score = correctas / total_questions * 100` y `approved = score >= 87.5`.\n\n### Respuestas\n- `200` success -> `data: { attempt_id, correct_answers, wrong_answers, score, approved }`.\n- `400` error -> `data: \"El campo 'answers' debe ser un array no vacio\"` (array ausente o vacio).\n- `401` -> `{ \"error\": \"ERROR_NO_EXISTS_TOKEN\" | \"ERROR_NO_VALID_TOKEN\" }`.\n- `404` error -> `data: \"Attempt no encontrado\"`.\n- `500` exception -> error de base de datos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": [\n    {\n      \"question_id\": {{question_id}},\n      \"selected_option\": {{option_id}}\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "200 - Respuestas registradas y puntaje calculado",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"answers\": [\n    {\n      \"question_id\": {{question_id}},\n      \"selected_option\": {{option_id}}\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/questions/attempts/{{attempt_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "questions",
+                    "attempts",
+                    "{{attempt_id}}"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": {\n    \"attempt_id\": 5,\n    \"correct_answers\": 36,\n    \"wrong_answers\": 4,\n    \"score\": \"90.00\",\n    \"approved\": true\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "400 - Array answers vacio o ausente",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"answers\": [\n    {\n      \"question_id\": {{question_id}},\n      \"selected_option\": {{option_id}}\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/questions/attempts/{{attempt_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "questions",
+                    "attempts",
+                    "{{attempt_id}}"
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"error\",\n  \"message\": \"Ocurrio un problema\",\n  \"data\": \"El campo 'answers' debe ser un array no vacío\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token ausente",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"answers\": [\n    {\n      \"question_id\": {{question_id}},\n      \"selected_option\": {{option_id}}\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/questions/attempts/{{attempt_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "questions",
+                    "attempts",
+                    "{{attempt_id}}"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_EXISTS_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token invalido o expirado",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"answers\": [\n    {\n      \"question_id\": {{question_id}},\n      \"selected_option\": {{option_id}}\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/questions/attempts/{{attempt_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "questions",
+                    "attempts",
+                    "{{attempt_id}}"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_VALID_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "404 - Attempt no encontrado",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"answers\": [\n    {\n      \"question_id\": {{question_id}},\n      \"selected_option\": {{option_id}}\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/questions/attempts/{{attempt_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "questions",
+                    "attempts",
+                    "{{attempt_id}}"
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"error\",\n  \"message\": \"Ocurrio un problema\",\n  \"data\": \"Attempt no encontrado\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "500 - Error de base de datos",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"answers\": [\n    {\n      \"question_id\": {{question_id}},\n      \"selected_option\": {{option_id}}\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/questions/attempts/{{attempt_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "questions",
+                    "attempts",
+                    "{{attempt_id}}"
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"exception\",\n  \"message\": \"Ocurrio un error en el servidor\",\n  \"data\": \"ECONNREFUSED 127.0.0.1:3306\"\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Attempts (requiere token)",
+      "description": "Historial de simulacros del usuario autenticado. Siempre filtra por el `_id` del token (`req.user._id`), por lo que un usuario solo ve sus propios attempts.",
+      "item": [
+        {
+          "name": "Listar mis attempts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 (OK)', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Devuelve un array de attempts', function () {",
+                  "        const body = pm.response.json();",
+                  "        pm.expect(body.status).to.eql('success');",
+                  "        pm.expect(body.data).to.be.an('array');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/attempts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "attempts"
+              ]
+            },
+            "description": "## Listar mis attempts\n`GET {{base_url}}/attempts`  —  requiere `Authorization: Bearer {{token}}`.\n\nSin parametros. Devuelve los intentos del usuario del token ordenados por `started_at DESC` e incluye `answers` con la opcion seleccionada.\n\n### Respuestas\n- `200` success -> `data: [Attempt]` (array vacio `[]` si el usuario no tiene intentos).\n- `401` -> `{ \"error\": \"ERROR_NO_EXISTS_TOKEN\" | \"ERROR_NO_VALID_TOKEN\" }`.\n- `500` exception -> error de base de datos."
+          },
+          "response": [
+            {
+              "name": "200 - Historial de simulacros",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/attempts",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "attempts"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": [\n    {\n      \"id\": 5,\n      \"user_id\": 2,\n      \"started_at\": \"2026-01-15T10:10:00.000Z\",\n      \"finished_at\": \"2026-01-15T10:45:00.000Z\",\n      \"total_questions\": 40,\n      \"correct_answers\": 36,\n      \"wrong_answers\": 4,\n      \"score\": \"90.00\",\n      \"approved\": true,\n      \"answers\": [\n        {\n          \"id\": 101,\n          \"attempt_id\": 5,\n          \"question_id\": 1,\n          \"selected_option\": 10,\n          \"is_correct\": true,\n          \"option\": {\n            \"id\": 10,\n            \"option_text\": \"PARE: detencion total obligatoria\",\n            \"is_correct\": true\n          }\n        }\n      ]\n    }\n  ]\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "200 - Usuario sin simulacros",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/attempts",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "attempts"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": []\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token ausente",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/attempts",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "attempts"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_EXISTS_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token invalido o expirado",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/attempts",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "attempts"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_VALID_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "500 - Error de base de datos",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/attempts",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "attempts"
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"exception\",\n  \"message\": \"Ocurrio un error en el servidor\",\n  \"data\": \"ECONNREFUSED 127.0.0.1:3306\"\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Detalle de un attempt",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 o 404', function () { pm.expect([200, 404]).to.include(pm.response.code); });",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Devuelve el intento con respuestas', function () {",
+                  "        const data = pm.response.json().data;",
+                  "        pm.expect(data).to.have.property('answers');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/attempts/{{attempt_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "attempts",
+                "{{attempt_id}}"
+              ]
+            },
+            "description": "## Detalle de un attempt\n`GET {{base_url}}/attempts/{{attempt_id}}`  —  requiere `Authorization: Bearer {{token}}`.\n\n### Path params\n| Param | Tipo | Descripcion |\n| --- | --- | --- |\n| `attempt_id` | int | id del intento (debe pertenecer al usuario del token) |\n\n### Respuestas\n- `200` success -> `data: Attempt` con `answers[]`, cada respuesta incluye `option` (opcion elegida) y `question` con todas sus `options`.\n- `401` -> `{ \"error\": \"ERROR_NO_EXISTS_TOKEN\" | \"ERROR_NO_VALID_TOKEN\" }`.\n- `404` exception -> `data: \"Attempt not found\"` (no existe o no pertenece al usuario). Ojo: usa el envelope `exception`, no `error`.\n- `500` exception -> error de base de datos."
+          },
+          "response": [
+            {
+              "name": "200 - Detalle del intento",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/attempts/{{attempt_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "attempts",
+                    "{{attempt_id}}"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": {\n    \"id\": 5,\n    \"user_id\": 2,\n    \"started_at\": \"2026-01-15T10:10:00.000Z\",\n    \"finished_at\": \"2026-01-15T10:45:00.000Z\",\n    \"total_questions\": 40,\n    \"correct_answers\": 36,\n    \"wrong_answers\": 4,\n    \"score\": \"90.00\",\n    \"approved\": true,\n    \"answers\": [\n      {\n        \"id\": 101,\n        \"attempt_id\": 5,\n        \"question_id\": 1,\n        \"selected_option\": 10,\n        \"is_correct\": true,\n        \"option\": {\n          \"id\": 10,\n          \"option_text\": \"PARE: detencion total obligatoria\",\n          \"is_correct\": true\n        },\n        \"question\": {\n          \"id\": 1,\n          \"question\": \"¿Que indica una senal octogonal de color rojo?\",\n          \"options\": [\n            {\n              \"id\": 10,\n              \"option_number\": 1,\n              \"option_text\": \"PARE: detencion total obligatoria\",\n              \"is_correct\": true\n            },\n            {\n              \"id\": 11,\n              \"option_number\": 2,\n              \"option_text\": \"Ceda el paso\",\n              \"is_correct\": false\n            }\n          ]\n        }\n      }\n    ]\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token ausente",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/attempts/{{attempt_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "attempts",
+                    "{{attempt_id}}"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_EXISTS_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token invalido o expirado",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/attempts/{{attempt_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "attempts",
+                    "{{attempt_id}}"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_VALID_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "404 - Attempt inexistente o de otro usuario",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/attempts/{{attempt_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "attempts",
+                    "{{attempt_id}}"
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"exception\",\n  \"message\": \"Ocurrio un error en el servidor\",\n  \"data\": \"Attempt not found\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "500 - Error de base de datos",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/attempts/{{attempt_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "attempts",
+                    "{{attempt_id}}"
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"exception\",\n  \"message\": \"Ocurrio un error en el servidor\",\n  \"data\": \"ECONNREFUSED 127.0.0.1:3306\"\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Discussions / Foro (requiere token)",
+      "description": "Modulo de debates entre usuarios: crear tema (con imagen opcional), listar temas, responder, cerrar y reportar. Requieren `Authorization: Bearer {{token}}`.",
+      "item": [
+        {
+          "name": "Listar discussions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 (OK)', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Devuelve un array de discussions', function () { pm.expect(pm.response.json().data).to.be.an('array'); });",
+                  "}",
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    const id = Array.isArray(body.data) ? (body.data[0] || {}).id : body.data.id;",
+                  "    if (id) { pm.collectionVariables.set('discussion_id', id); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/discussions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "discussions"
+              ]
+            },
+            "description": "## Listar discussions\n`GET {{base_url}}/discussions`  —  requiere `Authorization: Bearer {{token}}`.\n\nSin parametros. Devuelve todos los temas ordenados por `created_at DESC` e incluye `author: { id, name }`.\n\n### Respuestas\n- `200` success -> `data: [Discussion]` (`[]` si no hay temas).\n- `401` -> `{ \"error\": \"ERROR_NO_EXISTS_TOKEN\" | \"ERROR_NO_VALID_TOKEN\" }`.\n- `500` exception -> error de base de datos."
+          },
+          "response": [
+            {
+              "name": "200 - Listado de temas",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/discussions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": [\n    {\n      \"id\": 3,\n      \"user_id\": 2,\n      \"title\": \"Duda sobre prioridad en rotonda\",\n      \"content\": \"¿Quien tiene prioridad al ingresar a una rotonda?\",\n      \"image_url\": \"/uploads/1767900000001-ffeeddccbbaa9988.jpg\",\n      \"status\": \"open\",\n      \"closed_by_user_id\": null,\n      \"closed_reason\": null,\n      \"created_at\": \"2026-01-15T10:05:00.000Z\",\n      \"updated_at\": \"2026-01-15T10:05:00.000Z\",\n      \"author\": {\n        \"id\": 2,\n        \"name\": \"Juan Perez\"\n      }\n    }\n  ]\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "200 - Foro vacio",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/discussions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": []\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token ausente",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/discussions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_EXISTS_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token invalido o expirado",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/discussions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_VALID_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "500 - Error de base de datos",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/discussions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions"
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"exception\",\n  \"message\": \"Ocurrio un error en el servidor\",\n  \"data\": \"ECONNREFUSED 127.0.0.1:3306\"\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Crear discussion (multipart con imagen)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201 (Created)', function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) {",
+                  "    pm.test('Devuelve la discussion creada', function () {",
+                  "        const data = pm.response.json().data;",
+                  "        pm.expect(data).to.have.property('id');",
+                  "        pm.expect(data.status).to.eql('open');",
+                  "    });",
+                  "}",
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    const id = Array.isArray(body.data) ? (body.data[0] || {}).id : body.data.id;",
+                  "    if (id) { pm.collectionVariables.set('discussion_id', id); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/discussions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "discussions"
+              ]
+            },
+            "description": "## Crear discussion\n`POST {{base_url}}/discussions`  —  requiere `Authorization: Bearer {{token}}`.\n\n### Body (multipart/form-data)\n| Campo | Tipo | Requerido | Descripcion |\n| --- | --- | --- | --- |\n| `title` | text | si | Titulo del tema (string 255) |\n| `content` | text | si | Contenido del tema |\n| `image` | file | no | Imagen (`image/*`). Se guarda en `uploads/` y devuelve `image_url: /uploads/<archivo>` |\n\nEl autor (`user_id`) sale del token y el `status` por defecto es `open`.\n\n### Respuestas\n- `201` success -> `data: Discussion` creada (sin `author`).\n- `401` -> `{ \"error\": \"ERROR_NO_EXISTS_TOKEN\" | \"ERROR_NO_VALID_TOKEN\" }`.\n- `500` exception -> error de multer (p.ej. `ERROR_ONLY_IMAGES_ALLOWED` si el archivo no es imagen) o de base de datos.\n\n> La imagen queda publica en `http://localhost:4005` + `image_url`. El id creado se guarda en {{discussion_id}}.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Duda sobre prioridad en rotonda",
+                  "type": "text",
+                  "description": "Requerido (text)"
+                },
+                {
+                  "key": "content",
+                  "value": "¿Quien tiene prioridad al ingresar a una rotonda?",
+                  "type": "text",
+                  "description": "Requerido (text)"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": [],
+                  "description": "Opcional - solo imagenes (multer single(\"image\"))"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "201 - Discussion creada",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "value": "Duda sobre prioridad en rotonda",
+                      "type": "text",
+                      "description": "Requerido (text)"
+                    },
+                    {
+                      "key": "content",
+                      "value": "¿Quien tiene prioridad al ingresar a una rotonda?",
+                      "type": "text",
+                      "description": "Requerido (text)"
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": [],
+                      "description": "Opcional - solo imagenes (multer single(\"image\"))"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": {\n    \"id\": 3,\n    \"user_id\": 2,\n    \"title\": \"Duda sobre prioridad en rotonda\",\n    \"content\": \"¿Quien tiene prioridad al ingresar a una rotonda?\",\n    \"image_url\": \"/uploads/1767900000001-ffeeddccbbaa9988.jpg\",\n    \"status\": \"open\",\n    \"closed_by_user_id\": null,\n    \"closed_reason\": null,\n    \"created_at\": \"2026-01-15T10:05:00.000Z\",\n    \"updated_at\": \"2026-01-15T10:05:00.000Z\"\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "201 - Discussion creada sin imagen",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "value": "Duda sobre prioridad en rotonda",
+                      "type": "text",
+                      "description": "Requerido (text)"
+                    },
+                    {
+                      "key": "content",
+                      "value": "¿Quien tiene prioridad al ingresar a una rotonda?",
+                      "type": "text",
+                      "description": "Requerido (text)"
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": [],
+                      "description": "Opcional - solo imagenes (multer single(\"image\"))"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": {\n    \"id\": 3,\n    \"user_id\": 2,\n    \"title\": \"Duda sobre prioridad en rotonda\",\n    \"content\": \"¿Quien tiene prioridad al ingresar a una rotonda?\",\n    \"image_url\": null,\n    \"status\": \"open\",\n    \"closed_by_user_id\": null,\n    \"closed_reason\": null,\n    \"created_at\": \"2026-01-15T10:05:00.000Z\",\n    \"updated_at\": \"2026-01-15T10:05:00.000Z\"\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token ausente",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "value": "Duda sobre prioridad en rotonda",
+                      "type": "text",
+                      "description": "Requerido (text)"
+                    },
+                    {
+                      "key": "content",
+                      "value": "¿Quien tiene prioridad al ingresar a una rotonda?",
+                      "type": "text",
+                      "description": "Requerido (text)"
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": [],
+                      "description": "Opcional - solo imagenes (multer single(\"image\"))"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_EXISTS_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token invalido o expirado",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "value": "Duda sobre prioridad en rotonda",
+                      "type": "text",
+                      "description": "Requerido (text)"
+                    },
+                    {
+                      "key": "content",
+                      "value": "¿Quien tiene prioridad al ingresar a una rotonda?",
+                      "type": "text",
+                      "description": "Requerido (text)"
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": [],
+                      "description": "Opcional - solo imagenes (multer single(\"image\"))"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_VALID_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "500 - Archivo invalido / error del servidor",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "value": "Duda sobre prioridad en rotonda",
+                      "type": "text",
+                      "description": "Requerido (text)"
+                    },
+                    {
+                      "key": "content",
+                      "value": "¿Quien tiene prioridad al ingresar a una rotonda?",
+                      "type": "text",
+                      "description": "Requerido (text)"
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": [],
+                      "description": "Opcional - solo imagenes (multer single(\"image\"))"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions"
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"exception\",\n  \"message\": \"Ocurrio un error en el servidor\",\n  \"data\": \"ERROR_ONLY_IMAGES_ALLOWED\"\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Responder discussion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201 (Created)', function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) {",
+                  "    pm.test('Devuelve la respuesta creada', function () {",
+                  "        const data = pm.response.json().data;",
+                  "        pm.expect(data).to.have.property('reply');",
+                  "        pm.expect(data.discussion_id).to.be.a('number');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/discussions/{{discussion_id}}/reply",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "discussions",
+                "{{discussion_id}}",
+                "reply"
+              ]
+            },
+            "description": "## Responder discussion\n`POST {{base_url}}/discussions/{{discussion_id}}/reply`  —  requiere `Authorization: Bearer {{token}}`.\n\n### Path params\n| Param | Tipo | Descripcion |\n| --- | --- | --- |\n| `discussion_id` | int | id del tema a responder |\n\n### Body (application/json)\n| Campo | Tipo | Requerido | Descripcion |\n| --- | --- | --- | --- |\n| `reply` | string | si | Contenido de la respuesta |\n\n### Respuestas\n- `201` success -> `data: DiscussionReply { id, discussion_id, user_id, reply, created_at }`.\n- `401` -> `{ \"error\": \"ERROR_NO_EXISTS_TOKEN\" | \"ERROR_NO_VALID_TOKEN\" }`.\n- `404` error -> `data: \"ERROR_DISCUSSION_NOT_FOUND\"`.\n- `500` exception -> error de base de datos (p.ej. `reply` nulo).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reply\": \"Tiene prioridad quien ya circula dentro de la rotonda.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "201 - Respuesta creada",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reply\": \"Tiene prioridad quien ya circula dentro de la rotonda.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions/{{discussion_id}}/reply",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions",
+                    "{{discussion_id}}",
+                    "reply"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": {\n    \"id\": 7,\n    \"discussion_id\": 3,\n    \"user_id\": 2,\n    \"reply\": \"Tiene prioridad quien ya circula dentro de la rotonda.\",\n    \"created_at\": \"2026-01-15T11:00:00.000Z\"\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token ausente",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reply\": \"Tiene prioridad quien ya circula dentro de la rotonda.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions/{{discussion_id}}/reply",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions",
+                    "{{discussion_id}}",
+                    "reply"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_EXISTS_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token invalido o expirado",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reply\": \"Tiene prioridad quien ya circula dentro de la rotonda.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions/{{discussion_id}}/reply",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions",
+                    "{{discussion_id}}",
+                    "reply"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_VALID_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "404 - Discussion no encontrada",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reply\": \"Tiene prioridad quien ya circula dentro de la rotonda.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions/{{discussion_id}}/reply",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions",
+                    "{{discussion_id}}",
+                    "reply"
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"error\",\n  \"message\": \"Ocurrio un problema\",\n  \"data\": \"ERROR_DISCUSSION_NOT_FOUND\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "500 - Error de base de datos",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reply\": \"Tiene prioridad quien ya circula dentro de la rotonda.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions/{{discussion_id}}/reply",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions",
+                    "{{discussion_id}}",
+                    "reply"
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"exception\",\n  \"message\": \"Ocurrio un error en el servidor\",\n  \"data\": \"Validation error: reply cannot be null\"\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Cerrar discussion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 (OK)', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('El tema queda cerrado', function () {",
+                  "        const data = pm.response.json().data;",
+                  "        pm.expect(data.status).to.eql('closed');",
+                  "        pm.expect(data).to.have.property('closed_by_user_id');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/discussions/{{discussion_id}}/close",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "discussions",
+                "{{discussion_id}}",
+                "close"
+              ]
+            },
+            "description": "## Cerrar discussion\n`PATCH {{base_url}}/discussions/{{discussion_id}}/close`  —  requiere `Authorization: Bearer {{token}}`.\n\n### Path params\n| Param | Tipo | Descripcion |\n| --- | --- | --- |\n| `discussion_id` | int | id del tema a cerrar |\n\n### Body (application/json)\n| Campo | Tipo | Requerido | Descripcion |\n| --- | --- | --- | --- |\n| `closed_reason` | string(255) | no | Motivo del cierre |\n\nActualiza `status: \"closed\"`, `closed_by_user_id` (usuario del token), `closed_reason` y `updated_at`.\n\n### Respuestas\n- `200` success -> `data: Discussion` actualizada.\n- `401` -> `{ \"error\": \"ERROR_NO_EXISTS_TOKEN\" | \"ERROR_NO_VALID_TOKEN\" }`.\n- `404` error -> `data: \"ERROR_DISCUSSION_NOT_FOUND\"`.\n- `500` exception -> error de base de datos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"closed_reason\": \"Tema resuelto por el moderador\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "200 - Discussion cerrada",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"closed_reason\": \"Tema resuelto por el moderador\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions/{{discussion_id}}/close",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions",
+                    "{{discussion_id}}",
+                    "close"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": {\n    \"id\": 3,\n    \"user_id\": 2,\n    \"title\": \"Duda sobre prioridad en rotonda\",\n    \"content\": \"¿Quien tiene prioridad al ingresar a una rotonda?\",\n    \"image_url\": \"/uploads/1767900000001-ffeeddccbbaa9988.jpg\",\n    \"status\": \"closed\",\n    \"closed_by_user_id\": 2,\n    \"closed_reason\": \"Tema resuelto por el moderador\",\n    \"created_at\": \"2026-01-15T10:05:00.000Z\",\n    \"updated_at\": \"2026-01-15T12:00:00.000Z\"\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token ausente",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"closed_reason\": \"Tema resuelto por el moderador\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions/{{discussion_id}}/close",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions",
+                    "{{discussion_id}}",
+                    "close"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_EXISTS_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token invalido o expirado",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"closed_reason\": \"Tema resuelto por el moderador\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions/{{discussion_id}}/close",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions",
+                    "{{discussion_id}}",
+                    "close"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_VALID_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "404 - Discussion no encontrada",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"closed_reason\": \"Tema resuelto por el moderador\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions/{{discussion_id}}/close",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions",
+                    "{{discussion_id}}",
+                    "close"
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"error\",\n  \"message\": \"Ocurrio un problema\",\n  \"data\": \"ERROR_DISCUSSION_NOT_FOUND\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "500 - Error de base de datos",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"closed_reason\": \"Tema resuelto por el moderador\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions/{{discussion_id}}/close",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions",
+                    "{{discussion_id}}",
+                    "close"
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"exception\",\n  \"message\": \"Ocurrio un error en el servidor\",\n  \"data\": \"ECONNREFUSED 127.0.0.1:3306\"\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        },
+        {
+          "name": "Reportar discussion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201 (Created)', function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) {",
+                  "    pm.test('Devuelve el reporte con status pending', function () {",
+                  "        const data = pm.response.json().data;",
+                  "        pm.expect(data.status).to.eql('pending');",
+                  "        pm.expect(data.discussion_id).to.be.a('number');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/discussions/{{discussion_id}}/report",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "discussions",
+                "{{discussion_id}}",
+                "report"
+              ]
+            },
+            "description": "## Reportar discussion\n`POST {{base_url}}/discussions/{{discussion_id}}/report`  —  requiere `Authorization: Bearer {{token}}`.\n\n### Path params\n| Param | Tipo | Descripcion |\n| --- | --- | --- |\n| `discussion_id` | int | id del tema a reportar |\n\n### Body (application/json)\n| Campo | Tipo | Requerido | Descripcion |\n| --- | --- | --- | --- |\n| `reason` | string(255) | si | Motivo del reporte |\n\n### Respuestas\n- `201` success -> `data: DiscussionReport { id, discussion_id, reported_by_user_id, reason, status: \"pending\", created_at }`.\n- `401` -> `{ \"error\": \"ERROR_NO_EXISTS_TOKEN\" | \"ERROR_NO_VALID_TOKEN\" }`.\n- `404` error -> `data: \"ERROR_DISCUSSION_NOT_FOUND\"`.\n- `500` exception -> error de base de datos (p.ej. `reason` nulo).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Contenido ofensivo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "201 - Reporte creado",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Contenido ofensivo\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions/{{discussion_id}}/report",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions",
+                    "{{discussion_id}}",
+                    "report"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": {\n    \"id\": 2,\n    \"discussion_id\": 3,\n    \"reported_by_user_id\": 2,\n    \"reason\": \"Contenido ofensivo\",\n    \"status\": \"pending\",\n    \"created_at\": \"2026-01-15T12:30:00.000Z\"\n  }\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token ausente",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Contenido ofensivo\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions/{{discussion_id}}/report",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions",
+                    "{{discussion_id}}",
+                    "report"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_EXISTS_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token invalido o expirado",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Contenido ofensivo\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions/{{discussion_id}}/report",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions",
+                    "{{discussion_id}}",
+                    "report"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_VALID_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "404 - Discussion no encontrada",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Contenido ofensivo\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions/{{discussion_id}}/report",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions",
+                    "{{discussion_id}}",
+                    "report"
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"error\",\n  \"message\": \"Ocurrio un problema\",\n  \"data\": \"ERROR_DISCUSSION_NOT_FOUND\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "500 - Error de base de datos",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Contenido ofensivo\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/discussions/{{discussion_id}}/report",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "discussions",
+                    "{{discussion_id}}",
+                    "report"
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"exception\",\n  \"message\": \"Ocurrio un error en el servidor\",\n  \"data\": \"Validation error: reason cannot be null\"\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Recommendations (requiere token)",
+      "description": "Recomendaciones de manejo/conduccion activas. Requiere `Authorization: Bearer {{token}}`.",
+      "item": [
+        {
+          "name": "Listar recomendaciones",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 (OK)', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Devuelve un array de recomendaciones activas', function () {",
+                  "        const body = pm.response.json();",
+                  "        pm.expect(body.data).to.be.an('array');",
+                  "        body.data.forEach(function (item) { pm.expect(item.is_active).to.not.eql(false); });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/recommendations?category=Seguridad Vial",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "recommendations"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "Seguridad Vial",
+                  "description": "Opcional - omitelo para traer todas"
+                }
+              ]
+            },
+            "description": "## Listar recomendaciones\n`GET {{base_url}}/recommendations`  —  requiere `Authorization: Bearer {{token}}`.\n\n### Query params\n| Param | Tipo | Requerido | Descripcion |\n| --- | --- | --- | --- |\n| `category` | string(100) | no | Filtra por categoria. Si se omite devuelve todas las activas |\n\nSiempre filtra por `is_active = 1` y ordena por `created_at DESC`.\n\n### Respuestas\n- `200` success -> `data: [DrivingRecommendation]` (`[]` si no hay coincidencias).\n- `401` -> `{ \"error\": \"ERROR_NO_EXISTS_TOKEN\" | \"ERROR_NO_VALID_TOKEN\" }`.\n- `500` exception -> error de base de datos."
+          },
+          "response": [
+            {
+              "name": "200 - Recomendaciones filtradas por categoria",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/recommendations?category=Seguridad Vial",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "recommendations"
+                  ],
+                  "query": [
+                    {
+                      "key": "category",
+                      "value": "Seguridad Vial",
+                      "description": "Opcional - omitelo para traer todas"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"title\": \"Manten la distancia de seguridad\",\n      \"category\": \"Seguridad Vial\",\n      \"content\": \"Conserva al menos 3 segundos de distancia con el vehiculo de adelante.\",\n      \"image_url\": \"/uploads/1767900000002-rec-seguridad.jpg\",\n      \"is_active\": true,\n      \"created_at\": \"2026-01-15T09:00:00.000Z\"\n    }\n  ]\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "200 - Sin recomendaciones para la categoria",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/recommendations?category=Seguridad Vial",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "recommendations"
+                  ],
+                  "query": [
+                    {
+                      "key": "category",
+                      "value": "Seguridad Vial",
+                      "description": "Opcional - omitelo para traer todas"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Proceso realizado con exito\",\n  \"data\": []\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token ausente",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/recommendations?category=Seguridad Vial",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "recommendations"
+                  ],
+                  "query": [
+                    {
+                      "key": "category",
+                      "value": "Seguridad Vial",
+                      "description": "Opcional - omitelo para traer todas"
+                    }
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_EXISTS_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "401 - Token invalido o expirado",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/recommendations?category=Seguridad Vial",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "recommendations"
+                  ],
+                  "query": [
+                    {
+                      "key": "category",
+                      "value": "Seguridad Vial",
+                      "description": "Opcional - omitelo para traer todas"
+                    }
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"ERROR_NO_VALID_TOKEN\"\n}",
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "name": "500 - Error de base de datos",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/recommendations?category=Seguridad Vial",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "recommendations"
+                  ],
+                  "query": [
+                    {
+                      "key": "category",
+                      "value": "Seguridad Vial",
+                      "description": "Opcional - omitelo para traer todas"
+                    }
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"exception\",\n  \"message\": \"Ocurrio un error en el servidor\",\n  \"data\": \"ECONNREFUSED 127.0.0.1:3306\"\n}",
+              "_postman_previewlanguage": "json"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
