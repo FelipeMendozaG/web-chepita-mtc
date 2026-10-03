@@ -10,8 +10,7 @@ substitutions:
   _PIPELINE_NAME: 'chepita-web-pipeline'
   _DEPLOY_REGION: 'southamerica-east1'
   _SONAR_HOST_URL: 'https://sonarcloud.io'
-  SHORT_SHA: 'manual'
-  COMMIT_SHA: 'manual'
+  _SHORT_SHA: 'manual'
 
 steps:
   # ----------------------------------------------------------------------------
@@ -75,7 +74,7 @@ steps:
         echo ">> [CI - T_REGISTRY] INICIO: Construcción de imagen Docker"
         echo "=========================================================="
         docker build \
-          -t ${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA \
+          -t ${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:${_SHORT_SHA} \
           -t ${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:latest \
           .
         T_DOCKER_END=$$(date +%s)
@@ -93,7 +92,7 @@ steps:
       - |
         T_PUSH_START=$$(date +%s)
         echo ">> [CI - T_REGISTRY] Publicando imagen en Artifact Registry..."
-        docker push ${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
+        docker push ${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:${_SHORT_SHA}
         docker push ${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:latest
         T_PUSH_END=$$(date +%s)
         T_PUSH_DIFF=$$((T_PUSH_END - T_PUSH_START))
@@ -114,11 +113,11 @@ steps:
         echo "=========================================================="
         echo ">> [CD - T_CD] INICIO: Disparando Release en Cloud Deploy"
         echo "=========================================================="
-        gcloud deploy releases create "release-$SHORT_SHA" \
+        gcloud deploy releases create "release-${_SHORT_SHA}" \
           --project=$PROJECT_ID \
           --delivery-pipeline=${_PIPELINE_NAME} \
           --region=${_DEPLOY_REGION} \
-          --images=${_IMAGE_NAME}=${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA
+          --images=${_IMAGE_NAME}=${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:${_SHORT_SHA}
         T_CD_END=$$(date +%s)
         T_CD_DIFF=$$((T_CD_END - T_CD_START))
         echo "=========================================================="
@@ -133,7 +132,7 @@ availableSecrets:
 
 # Imágenes finales generadas por el pipeline
 images:
-  - '${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:$SHORT_SHA'
+  - '${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:${_SHORT_SHA}'
   - '${_AR_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPOSITORY}/${_IMAGE_NAME}:latest'
 
 options:
